@@ -104,6 +104,7 @@
 
 	.input-wrapper > input {
 		width: 100%;
+		height: 100%;
 		font-size: 1.25rem;
 		font-weight: 600;
 		padding-left: 0.5rem;
@@ -112,12 +113,14 @@
 		border-radius: 0.25rem;
 		background-color: transparent;
 		outline: none;
+		text-transform: uppercase;
 	}
 
 	.input-wrapper > input::placeholder {
 		font-size: 1.25rem;
 		font-weight: 600;
 		opacity: 0.25;
+		text-transform: none;
 	}
 
 	.input-wrapper > button {
