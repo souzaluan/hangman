@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { IconCopy, IconInfoCircle, IconSend2 } from '@tabler/icons-svelte';
-
-	let wayToEnter: 'to-invite' | 'guest' = 'to-invite';
+	import { IconInfoCircle, IconSend2 } from '@tabler/icons-svelte';
 </script>
 
 <section>
@@ -11,46 +9,27 @@
 	</div>
 
 	<div class="controls-container">
-		<div class="segment-control">
-			<button data-active={wayToEnter === 'to-invite'} on:click={() => (wayToEnter = 'to-invite')}
-				>Convidar</button
-			>
-			<button data-active={wayToEnter === 'guest'} on:click={() => (wayToEnter = 'guest')}
-				>Entrar</button
-			>
+		<div class="input-container">
+			<div class="input-wrapper">
+				<input placeholder="Código da sala" />
+				<button type="button">
+					<IconSend2 size="1.75rem" />
+				</button>
+			</div>
+
+			<div class="input-info">
+				<IconInfoCircle size="0.75rem" />
+				<span>Insira o código da sala</span>
+			</div>
 		</div>
 
-		{#if wayToEnter === 'to-invite'}
-			<div class="input-container">
-				<div class="input-wrapper">
-					<input readonly value="A1BH" />
-					<button type="button">
-						<IconCopy size="1.75rem" />
-					</button>
-				</div>
+		<span class="conditional-label">
+			<span></span>
+			ou
+			<span></span>
+		</span>
 
-				<div class="input-info">
-					<IconInfoCircle size="0.875rem" />
-					<span>Copie o código e envie para o seu amigo</span>
-				</div>
-			</div>
-		{/if}
-
-		{#if wayToEnter === 'guest'}
-			<div class="input-container">
-				<div class="input-wrapper">
-					<input placeholder="Código da sala" />
-					<button type="button">
-						<IconSend2 size="1.75rem" />
-					</button>
-				</div>
-
-				<div class="input-info">
-					<IconInfoCircle size="0.75rem" />
-					<span>Insira o código da sala</span>
-				</div>
-			</div>
-		{/if}
+		<button class="new-room">Criar sala</button>
 	</div>
 </section>
 
@@ -65,11 +44,11 @@
 	}
 
 	h1 {
-		font-size: 2rem;
+		font-size: 2.25rem;
 	}
 
 	h2 {
-		font-size: 1.25rem;
+		font-size: 1.5rem;
 	}
 
 	.highlight {
@@ -85,6 +64,38 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+	}
+
+	.new-room {
+		min-height: 4rem;
+		max-height: 4rem;
+		flex: 1;
+		font-size: 1.5rem;
+		font-weight: 600;
+		border: none;
+		border-radius: 0.5rem;
+		background-color: var(--color-neutral-primary);
+		color: var(--color-neutral-secondary);
+	}
+
+	.new-room:hover {
+		cursor: pointer;
+		filter: brightness(0.9);
+	}
+
+	.conditional-label {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 1.125rem;
+		color: var(--color-neutral-primary);
+	}
+
+	.conditional-label > span {
+		flex: 1;
+		height: 1px;
+		background-color: var(--color-neutral-primary);
 	}
 
 	.input-container {
@@ -141,43 +152,5 @@
 		gap: 0.25rem;
 		font-size: 0.875rem;
 		color: var(--color-neutral-secondary);
-	}
-
-	.segment-control {
-		display: flex;
-	}
-
-	.segment-control {
-		border-radius: 0.5rem;
-	}
-
-	.segment-control > button:first-child {
-		border-top-left-radius: 0.5rem;
-		border-bottom-left-radius: 0.5rem;
-	}
-
-	.segment-control > button:last-child {
-		border-top-right-radius: 0.5rem;
-		border-bottom-right-radius: 0.5rem;
-	}
-
-	.segment-control > button {
-		flex: 1;
-		font-size: 1.5rem;
-		font-weight: 600;
-		padding: 0.75rem 1rem;
-		border: none;
-	}
-	.segment-control > button:hover {
-		cursor: pointer;
-		filter: brightness(0.9);
-	}
-	.segment-control > button[data-active='false'] {
-		color: var(--color-neutral-primary);
-		background-color: var(--color-neutral-secondary);
-	}
-	.segment-control > button[data-active='true'] {
-		color: var(--color-neutral-secondary);
-		background-color: var(--color-neutral-primary);
 	}
 </style>
