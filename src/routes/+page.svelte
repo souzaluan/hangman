@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { IconInfoCircle, IconSend2 } from '@tabler/icons-svelte';
 </script>
 
@@ -11,7 +12,7 @@
 	<div class="controls-container">
 		<div class="input-container">
 			<div class="input-wrapper">
-				<input placeholder="Código da sala" />
+				<input placeholder="Room code" />
 				<button type="button">
 					<IconSend2 size="1.75rem" />
 				</button>
@@ -19,17 +20,17 @@
 
 			<div class="input-info">
 				<IconInfoCircle size="0.75rem" />
-				<span>Insira o código da sala</span>
+				<span>Enter room code</span>
 			</div>
 		</div>
 
 		<span class="conditional-label">
 			<span></span>
-			ou
+			or
 			<span></span>
 		</span>
 
-		<button class="new-room">Criar sala</button>
+		<button class="new-room" on:click={() => goto('/room/ASAHB')}>Create room</button>
 	</div>
 </section>
 
@@ -41,6 +42,7 @@
 		justify-content: center;
 		align-items: center;
 		gap: 2rem;
+		padding: 2rem;
 	}
 
 	h1 {

@@ -32,6 +32,7 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"@tabler/icons-svelte": "^3.11.0"
+		"@tabler/icons-svelte": "^3.11.0",
+		"svelte-french-toast": "^1.2.0"
 	}
 }
