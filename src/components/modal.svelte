@@ -21,6 +21,7 @@
 		top: 50%;
 		left: 50%;
 		transform: translateX(-50%) translateY(-50%);
+		background-color: var(--color-neutral-secondary);
 	}
 	dialog::backdrop {
 		background-color: rgba(0, 0, 0, 0.3);

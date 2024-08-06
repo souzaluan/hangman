@@ -16,6 +16,8 @@
 	const MAX_ATTEMPTS = 5;
 	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) => String.fromCharCode(index + 65));
 
+	$: newWorldModalIsOpen = true;
+
 	const word = 'SECRET';
 	const letters = word.split('');
 
@@ -100,7 +102,7 @@
 	</div>
 </section>
 
-<Modal isOpen>
+<Modal isOpen={newWorldModalIsOpen}>
 	<div class="new-word-container">
 		<h2 class="new-word-title">It's your turn!</h2>
 
@@ -115,7 +117,9 @@
 			</div>
 		</div>
 
-		<button class="new-word-submit-button" on:click={() => goto('/room/ASAHB')}>Let's go</button>
+		<button class="new-word-submit-button" on:click={() => (newWorldModalIsOpen = false)}
+			>Let's go</button
+		>
 	</div>
 </Modal>
 
