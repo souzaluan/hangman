@@ -16,7 +16,7 @@
 	const MAX_ATTEMPTS = 5;
 	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) => String.fromCharCode(index + 65));
 
-	$: newWorldModalIsOpen = true;
+	let newWorldModalIsOpen = false;
 
 	const word = 'SECRET';
 	const letters = word.split('');
