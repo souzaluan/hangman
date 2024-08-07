@@ -1,1 +1,1 @@
-*<center>trying to develop my first multiplayer game</span> =)</center>*
+*<p align="center">trying to develop my first multiplayer game</span> =)</p>*
