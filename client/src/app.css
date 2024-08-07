@@ -1,0 +1,42 @@
+:root {
+	--font-sans-serif-primary: Roboto, Arial, sans-serif;
+
+	--color-brand-primary: #6cb6a5;
+	--color-brand-secondary: #96c3a6;
+
+	--color-neutral-primary: #221d34;
+	--color-neutral-secondary: #dae2cb;
+
+	--color-danger-primary: #90425c;
+}
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+	font-family: var(--font-sans-serif-primary);
+}
+
+html {
+	font-size: 81.25%;
+
+	@media screen and (min-width: 640px) {
+		font-size: 87.5%;
+	}
+
+	@media screen and (min-width: 768px) {
+		font-size: 93.75%;
+	}
+
+	@media screen and (min-width: 1280px) {
+		font-size: 100%;
+	}
+}
+
+h1 {
+	color: var(--color-neutral-primary);
+}
+
+h2 {
+	color: var(--color-neutral-secondary);
+}
