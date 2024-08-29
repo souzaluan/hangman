@@ -26,7 +26,8 @@
     "no-useless-constructor": "off",
     "indent": ["error", 2],
     "import/no-unresolved": "error",
-    "import/extensions": "off"
+    "import/extensions": "off",
+    "consistent-return": "off"
   },
   "settings": {
     "import/extensions": [".js", ".jsx", ".ts", ".tsx"],

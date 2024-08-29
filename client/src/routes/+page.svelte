@@ -1,6 +1,22 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { socket } from '$lib/socket';
 	import { IconInfoCircle, IconSend2 } from '@tabler/icons-svelte';
+	import { onMount } from 'svelte';
+	import toast from 'svelte-french-toast';
+
+	let roomCode: string = '';
+
+	const handleCreateRoom = () => socket.emit('create-room');
+	const handleJoinRoom = () => socket.emit('join-room', roomCode);
+
+	onMount(() => {
+		socket.on('created-room', (room) => goto(`/room/${room.code}`));
+		socket.on('joined-room', (room) => goto(`/room/${room.code}`));
+
+		socket.on('room-already-started', () => toast.error('A partida está em andamento.'));
+		socket.on('not-found-room', () => toast.error('Sala não encontrada.'));
+	});
 </script>
 
 <section>
@@ -12,8 +28,12 @@
 	<div class="controls-container">
 		<div class="input-container">
 			<div class="input-wrapper">
-				<input placeholder="Room code" />
-				<button type="button">
+				<input
+					placeholder="Room code"
+					value={roomCode}
+					on:change={(value) => (roomCode = value.currentTarget.value)}
+				/>
+				<button type="button" on:click={handleJoinRoom}>
 					<IconSend2 size="1.75rem" />
 				</button>
 			</div>
@@ -30,7 +50,7 @@
 			<span></span>
 		</span>
 
-		<button class="new-room" on:click={() => goto('/room/ASAHB')}>Create room</button>
+		<button class="new-room" on:click={handleCreateRoom}>Create room</button>
 	</div>
 </section>
 

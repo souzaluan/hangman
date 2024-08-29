@@ -9,6 +9,8 @@
 		IconInfoCircle
 	} from '@tabler/icons-svelte';
 	import Modal from '../../../components/modal.svelte';
+	import { onMount } from 'svelte';
+	import { socket } from '$lib/socket';
 
 	export let data: { code: string };
 	const { code: roomCode } = data;
@@ -17,6 +19,8 @@
 	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) => String.fromCharCode(index + 65));
 
 	let newWorldModalIsOpen = false;
+
+	let isGuest: boolean = false;
 
 	const word = 'SECRET';
 	const letters = word.split('');
@@ -55,6 +59,17 @@
 				toast.error('Ops! Ocorreu um erro ao copiar o código. Tente novamente');
 			});
 	};
+
+	onMount(() => {
+		socket.emit('get-room', roomCode);
+		socket.on('unauthorized', () => goto('/'));
+		socket.on('setup', (room) => {
+			isGuest = room.profile === 'guest';
+		});
+		socket.on('choose-word', () => {
+			newWorldModalIsOpen = true;
+		});
+	});
 </script>
 
 <header class="page-header">
@@ -62,10 +77,12 @@
 		<IconArrowLeft size="2rem" />
 	</button>
 
-	<button type="button" class="copy-room-code" title="Copy room code" on:click={copyRoomCode}>
-		<IconCopy />
-		{roomCode}
-	</button>
+	{#if !isGuest}
+		<button type="button" class="copy-room-code" title="Copy room code" on:click={copyRoomCode}>
+			<IconCopy />
+			{roomCode}
+		</button>
+	{/if}
 </header>
 
 <section>
