@@ -47,11 +47,18 @@ io.on('connection', (socket) => {
       id: socket.id,
       name: `Player ${room.players.length + 1}`,
       type: PlayerType.Guest,
-      roomCode: code,
+      roomCode: room.code,
     };
 
     players.push(player);
     room.players.push(player);
+
+    socket.join(room.code);
+
+    socket.in(room.code).emit('notification', {
+      type: 'success',
+      message: `${player.name} joined!`,
+    });
 
     callback();
   });

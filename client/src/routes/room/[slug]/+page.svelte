@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import toast from 'svelte-french-toast';
+	import toast, { type ToastType } from 'svelte-french-toast';
 	import {
 		IconArrowLeft,
 		IconCopy,
@@ -9,6 +9,9 @@
 		IconInfoCircle
 	} from '@tabler/icons-svelte';
 	import Modal from '../../../components/modal.svelte';
+	import { onMount } from 'svelte';
+	import { socket } from '$lib/socket';
+	import type { ServerNotification } from '../../../types/server-notification';
 
 	export let data: { code: string };
 	const { code: roomCode } = data;
@@ -59,6 +62,16 @@
 	const handleSendWord = () => {
 		newWordModalIsOpen = false;
 	};
+
+	onMount(() => {
+		socket.on('notification', (notification: ServerNotification) => {
+			const toastTypeByNotificationType: Record<ServerNotification['type'], 'success'> = {
+				success: 'success'
+			};
+			const toastType = toastTypeByNotificationType[notification.type];
+			toast[toastType](notification.message);
+		});
+	});
 </script>
 
 <header class="page-header">
