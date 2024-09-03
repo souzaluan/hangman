@@ -2,21 +2,27 @@
 	import { goto } from '$app/navigation';
 	import { socket } from '$lib/socket';
 	import { IconInfoCircle, IconSend2 } from '@tabler/icons-svelte';
-	import { onMount } from 'svelte';
 	import toast from 'svelte-french-toast';
+	import type { ServerError } from '../types/server-error';
 
 	let roomCode: string = '';
 
-	const handleCreateRoom = () => socket.emit('create-room');
-	const handleJoinRoom = () => socket.emit('join-room', roomCode);
+	const handleCreateRoom = () => {
+		socket.emit('create-room', (room: string) => goto(`/room/${room}`));
+	};
+	const handleJoinRoom = () => {
+		socket.emit('join-room', roomCode, (error: ServerError) => {
+			if (!error) {
+				return goto(`/room/${roomCode}`);
+			}
 
-	onMount(() => {
-		socket.on('created-room', (room) => goto(`/room/${room.code}`));
-		socket.on('joined-room', (room) => goto(`/room/${room.code}`));
+			if (error.type === 'not-found') {
+				return toast.error('Sala não encontrada. Verifique o código e tente novamente.');
+			}
 
-		socket.on('room-already-started', () => toast.error('A partida está em andamento.'));
-		socket.on('not-found-room', () => toast.error('Sala não encontrada.'));
-	});
+			return toast.error('Ops! Ocorreu um erro, tente novamente.');
+		});
+	};
 </script>
 
 <section>

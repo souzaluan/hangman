@@ -9,8 +9,6 @@
 		IconInfoCircle
 	} from '@tabler/icons-svelte';
 	import Modal from '../../../components/modal.svelte';
-	import { onMount } from 'svelte';
-	import { socket } from '$lib/socket';
 
 	export let data: { code: string };
 	const { code: roomCode } = data;
@@ -18,12 +16,10 @@
 	const MAX_ATTEMPTS = 5;
 	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) => String.fromCharCode(index + 65));
 
-	let newWorldModalIsOpen = false;
+	let newWordModalIsOpen = false;
+	let word = 'SECRET';
 
-	let isGuest: boolean = false;
-
-	const word = 'SECRET';
-	const letters = word.split('');
+	$: letters = word?.split('') ?? [];
 
 	let attempts: string[] = [];
 	$: wrongAttempts = attempts.filter((attempt) => !letters.includes(attempt)).length;
@@ -60,16 +56,9 @@
 			});
 	};
 
-	onMount(() => {
-		socket.emit('get-room', roomCode);
-		socket.on('unauthorized', () => goto('/'));
-		socket.on('setup', (room) => {
-			isGuest = room.profile === 'guest';
-		});
-		socket.on('choose-word', () => {
-			newWorldModalIsOpen = true;
-		});
-	});
+	const handleSendWord = () => {
+		newWordModalIsOpen = false;
+	};
 </script>
 
 <header class="page-header">
@@ -77,12 +66,10 @@
 		<IconArrowLeft size="2rem" />
 	</button>
 
-	{#if !isGuest}
-		<button type="button" class="copy-room-code" title="Copy room code" on:click={copyRoomCode}>
-			<IconCopy />
-			{roomCode}
-		</button>
-	{/if}
+	<button type="button" class="copy-room-code" title="Copy room code" on:click={copyRoomCode}>
+		<IconCopy />
+		{roomCode}
+	</button>
 </header>
 
 <section>
@@ -119,13 +106,17 @@
 	</div>
 </section>
 
-<Modal isOpen={newWorldModalIsOpen}>
+<Modal isOpen={newWordModalIsOpen}>
 	<div class="new-word-container">
 		<h2 class="new-word-title">It's your turn!</h2>
 
 		<div class="input-container">
 			<div class="input-wrapper">
-				<input placeholder="Type a word" />
+				<input
+					placeholder="Type a word"
+					value={word}
+					on:change={(event) => (word = event.currentTarget.value)}
+				/>
 			</div>
 
 			<div class="input-info">
@@ -134,9 +125,7 @@
 			</div>
 		</div>
 
-		<button class="new-word-submit-button" on:click={() => (newWorldModalIsOpen = false)}
-			>Let's go</button
-		>
+		<button class="new-word-submit-button" on:click={handleSendWord}>Let's go</button>
 	</div>
 </Modal>
 

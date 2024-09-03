@@ -1,9 +1,8 @@
-import { RoomStatus } from '../constants/RoomStatus';
+import Player from './Player';
 
-export interface Room {
-  owner: string;
+interface Room {
   code: string;
-  status: RoomStatus;
-  opponents: string[];
-  word?: string;
+  players: Player[];
 }
+
+export default Room;
