@@ -1,6 +1,28 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { socket } from '$lib/socket';
 	import { IconInfoCircle, IconSend2 } from '@tabler/icons-svelte';
+	import toast from 'svelte-french-toast';
+	import type { ServerError } from '../types/server-error';
+
+	let roomCode: string = '';
+
+	const handleCreateRoom = () => {
+		socket.emit('create-room', (room: string) => goto(`/room/${room}`));
+	};
+	const handleJoinRoom = () => {
+		socket.emit('join-room', roomCode, (error: ServerError) => {
+			if (!error) {
+				return goto(`/room/${roomCode}`);
+			}
+
+			if (error.type === 'not-found') {
+				return toast.error('Sala não encontrada. Verifique o código e tente novamente.');
+			}
+
+			return toast.error('Ops! Ocorreu um erro, tente novamente.');
+		});
+	};
 </script>
 
 <section>
@@ -12,8 +34,12 @@
 	<div class="controls-container">
 		<div class="input-container">
 			<div class="input-wrapper">
-				<input placeholder="Room code" />
-				<button type="button">
+				<input
+					placeholder="Room code"
+					value={roomCode}
+					on:change={(value) => (roomCode = value.currentTarget.value)}
+				/>
+				<button type="button" on:click={handleJoinRoom}>
 					<IconSend2 size="1.75rem" />
 				</button>
 			</div>
@@ -30,7 +56,7 @@
 			<span></span>
 		</span>
 
-		<button class="new-room" on:click={() => goto('/room/ASAHB')}>Create room</button>
+		<button class="new-room" on:click={handleCreateRoom}>Create room</button>
 	</div>
 </section>
 

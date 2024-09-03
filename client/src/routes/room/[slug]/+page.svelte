@@ -16,10 +16,10 @@
 	const MAX_ATTEMPTS = 5;
 	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) => String.fromCharCode(index + 65));
 
-	let newWorldModalIsOpen = false;
+	let newWordModalIsOpen = false;
+	let word = 'SECRET';
 
-	const word = 'SECRET';
-	const letters = word.split('');
+	$: letters = word?.split('') ?? [];
 
 	let attempts: string[] = [];
 	$: wrongAttempts = attempts.filter((attempt) => !letters.includes(attempt)).length;
@@ -54,6 +54,10 @@
 			.catch(() => {
 				toast.error('Ops! Ocorreu um erro ao copiar o código. Tente novamente');
 			});
+	};
+
+	const handleSendWord = () => {
+		newWordModalIsOpen = false;
 	};
 </script>
 
@@ -102,13 +106,17 @@
 	</div>
 </section>
 
-<Modal isOpen={newWorldModalIsOpen}>
+<Modal isOpen={newWordModalIsOpen}>
 	<div class="new-word-container">
 		<h2 class="new-word-title">It's your turn!</h2>
 
 		<div class="input-container">
 			<div class="input-wrapper">
-				<input placeholder="Type a word" />
+				<input
+					placeholder="Type a word"
+					value={word}
+					on:change={(event) => (word = event.currentTarget.value)}
+				/>
 			</div>
 
 			<div class="input-info">
@@ -117,9 +125,7 @@
 			</div>
 		</div>
 
-		<button class="new-word-submit-button" on:click={() => (newWorldModalIsOpen = false)}
-			>Let's go</button
-		>
+		<button class="new-word-submit-button" on:click={handleSendWord}>Let's go</button>
 	</div>
 </Modal>
 
