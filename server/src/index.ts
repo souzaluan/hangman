@@ -3,9 +3,10 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import crypto from 'node:crypto';
-import { ErrorType, NotificationType, PlayerType } from './constants';
-import type { Player, Room } from './domain';
-import { ErrorFactory, NotificationFactory } from './factories';
+import { PlayerType } from './constants';
+import { Player, Room } from './entities';
+import { NotFoundError } from './errors';
+import { SuccessNotification } from './notifications';
 
 const app = express();
 
@@ -29,15 +30,16 @@ io.on('connection', (socket) => {
 
     const roomCode = crypto.randomUUID();
 
-    const player: Player = {
+    const room = Room.create({ id: roomCode });
+    rooms.push(room);
+
+    const player = Player.create({
       id: socket.id,
       name: 'Player 1',
       type: PlayerType.Admin,
       roomCode,
-    };
-
+    });
     players.push(player);
-    rooms.push({ code: roomCode, players: [player] });
 
     socket.join(roomCode);
     callback(roomCode);
@@ -46,31 +48,25 @@ io.on('connection', (socket) => {
   socket.on('join-room', (code, callback) => {
     console.log('> join room');
 
-    const room = rooms.find((_room) => _room.code === code);
+    const room = rooms.find((_room) => _room.id === code);
 
-    if (!room) return callback(new ErrorFactory(ErrorType.NotFound));
+    if (!room) return callback(new NotFoundError());
 
-    const player: Player = {
+    const playersInRoom = players.filter((player) => player.roomCode === code);
+
+    const player = Player.create({
       id: socket.id,
-      name: `Player ${room.players.length + 1}`,
+      name: `Player ${playersInRoom.length + 1}`,
       type: PlayerType.Guest,
-      roomCode: room.code,
-    };
-
+      roomCode: room.id,
+    });
     players.push(player);
-    room.players.push(player);
 
-    socket.join(room.code);
+    socket.join(room.id);
 
     socket
-      .in(room.code)
-      .emit(
-        'notification',
-        new NotificationFactory(
-          NotificationType.Success,
-          `${player.name} joined!`
-        )
-      );
+      .in(room.id)
+      .emit('notification', new SuccessNotification(`${player.name} joined!`));
 
     callback();
   });

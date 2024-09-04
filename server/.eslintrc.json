@@ -19,6 +19,7 @@
   "plugins": ["import", "prettier", "@typescript-eslint"],
   "rules": {
     "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-empty-object-type": "off",
     "quotes": ["error", "single"],
     "no-undef": "off",
     "import/prefer-default-export": "off",
@@ -29,7 +30,8 @@
     "consistent-return": "off",
     "no-console": "off",
     "no-empty-function": "off",
-    "no-useless-constructor": "off"
+    "no-useless-constructor": "off",
+    "no-underscore-dangle": "off"
   },
   "settings": {
     "import/extensions": [".js", ".jsx", ".ts", ".tsx"],
