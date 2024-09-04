@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import toast, { type ToastType } from 'svelte-french-toast';
+	import toast from 'svelte-french-toast';
 	import {
 		IconArrowLeft,
 		IconCopy,
@@ -11,7 +11,8 @@
 	import Modal from '../../../components/modal.svelte';
 	import { onMount } from 'svelte';
 	import { socket } from '$lib/socket';
-	import type { ServerNotification } from '../../../types/server-notification';
+	import type { NotificationResponse } from '$server/responses';
+	import { NotificationType } from '$server/constants';
 
 	export let data: { code: string };
 	const { code: roomCode } = data;
@@ -64,9 +65,9 @@
 	};
 
 	onMount(() => {
-		socket.on('notification', (notification: ServerNotification) => {
-			const toastTypeByNotificationType: Record<ServerNotification['type'], 'success'> = {
-				success: 'success'
+		socket.on('notification', (notification: NotificationResponse) => {
+			const toastTypeByNotificationType: Record<NotificationType, 'success'> = {
+				[NotificationType.Success]: 'success'
 			};
 			const toastType = toastTypeByNotificationType[notification.type];
 			toast[toastType](notification.message);

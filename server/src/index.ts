@@ -3,8 +3,9 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import crypto from 'node:crypto';
-import { PlayerType } from './constants';
-import { Player, Room } from './domain';
+import { ErrorType, NotificationType, PlayerType } from './constants';
+import type { Player, Room } from './domain';
+import { ErrorFactory, NotificationFactory } from './factories';
 
 const app = express();
 
@@ -21,7 +22,11 @@ const players: Player[] = [];
 const rooms: Room[] = [];
 
 io.on('connection', (socket) => {
+  console.log('> new connection: ', socket.id);
+
   socket.on('create-room', (callback) => {
+    console.log('> create room');
+
     const roomCode = crypto.randomUUID();
 
     const player: Player = {
@@ -39,9 +44,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join-room', (code, callback) => {
+    console.log('> join room');
+
     const room = rooms.find((_room) => _room.code === code);
 
-    if (!room) return callback({ type: 'not-found' });
+    if (!room) return callback(new ErrorFactory(ErrorType.NotFound));
 
     const player: Player = {
       id: socket.id,
@@ -55,10 +62,15 @@ io.on('connection', (socket) => {
 
     socket.join(room.code);
 
-    socket.in(room.code).emit('notification', {
-      type: 'success',
-      message: `${player.name} joined!`,
-    });
+    socket
+      .in(room.code)
+      .emit(
+        'notification',
+        new NotificationFactory(
+          NotificationType.Success,
+          `${player.name} joined!`
+        )
+      );
 
     callback();
   });

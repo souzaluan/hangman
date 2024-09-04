@@ -23,11 +23,13 @@
     "no-undef": "off",
     "import/prefer-default-export": "off",
     "class-methods-use-this": "off",
-    "no-useless-constructor": "off",
     "indent": ["error", 2],
     "import/no-unresolved": "error",
     "import/extensions": "off",
-    "consistent-return": "off"
+    "consistent-return": "off",
+    "no-console": "off",
+    "no-empty-function": "off",
+    "no-useless-constructor": "off"
   },
   "settings": {
     "import/extensions": [".js", ".jsx", ".ts", ".tsx"],
