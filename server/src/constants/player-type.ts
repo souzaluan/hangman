@@ -1,6 +1,6 @@
 enum PlayerType {
-  Admin = 'admin',
-  Guest = 'guest',
+  Admin,
+  Guest,
 }
 
 export default PlayerType;

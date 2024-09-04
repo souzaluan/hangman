@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { socket } from '$lib/socket';
+	import type { ErrorResponse } from '$server/responses';
+	import { ErrorType } from '$server/constants';
+
 	import { IconInfoCircle, IconSend2 } from '@tabler/icons-svelte';
 	import toast from 'svelte-french-toast';
-	import type { ServerError } from '../types/server-error';
 
 	let roomCode: string = '';
 
@@ -11,12 +13,12 @@
 		socket.emit('create-room', (room: string) => goto(`/room/${room}`));
 	};
 	const handleJoinRoom = () => {
-		socket.emit('join-room', roomCode, (error: ServerError) => {
+		socket.emit('join-room', roomCode, (error?: ErrorResponse) => {
 			if (!error) {
 				return goto(`/room/${roomCode}`);
 			}
 
-			if (error.type === 'not-found') {
+			if (error.type === ErrorType.NotFound) {
 				return toast.error('Sala não encontrada. Verifique o código e tente novamente.');
 			}
 
