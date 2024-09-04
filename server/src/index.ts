@@ -97,4 +97,4 @@ io.on('connection', (socket) => {
   );
 });
 
-http.listen(3333);
+http.listen(3333, () => console.log('> server is running'));
