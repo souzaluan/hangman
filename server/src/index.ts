@@ -78,6 +78,23 @@ io.on('connection', (socket) => {
 
     callback();
   });
+
+  socket.on(
+    'set-word',
+    ({ roomCode, word }: { roomCode: string; word: string }, callback) => {
+      console.log('> set word');
+
+      const room = rooms.find((_room) => _room.id === roomCode);
+
+      if (!room) return callback(new NotFoundError('Sala não encontrada.'));
+
+      room.word = word;
+
+      io.in(room.id).emit('chosen-word', word.length);
+
+      callback();
+    }
+  );
 });
 
 http.listen(3333);

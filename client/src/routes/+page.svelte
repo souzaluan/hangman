@@ -1,69 +1,261 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { socket } from '$lib/socket';
+	import { NotificationType, PlayerType } from '$server/constants';
+	import type { NotificationResponse } from '$server/responses';
 
-	import { IconInfoCircle, IconSend2 } from '@tabler/icons-svelte';
+	import {
+		IconArrowLeft,
+		IconCopy,
+		IconHeart,
+		IconHeartFilled,
+		IconInfoCircle,
+		IconSend2
+	} from '@tabler/icons-svelte';
+	import { onMount } from 'svelte';
 	import toast from 'svelte-french-toast';
+	import Modal from '../components/modal.svelte';
+
+	interface RoomProperties {
+		status: 'join-or-create' | 'playing';
+		code?: string;
+		playerType?: PlayerType;
+	}
+
+	const MAX_ATTEMPTS = 5;
+	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) => String.fromCharCode(index + 65));
 
 	let roomCode: string = '';
+	let roomProperties: RoomProperties = {
+		status: 'join-or-create'
+	};
+
+	let word = 'SECRET';
+	let newWordModalIsOpen = false;
+	let chooseWordAmountLetters: number;
+
+	$: letters = word?.split('') ?? [];
+
+	let attempts: string[] = [];
+	$: wrongAttempts = attempts.filter((attempt) => !letters.includes(attempt)).length;
+	$: attemptsStatus = Array.from(
+		{ length: MAX_ATTEMPTS },
+		(_, index): 'wrong-attempt' | 'initial-state' => {
+			return index >= MAX_ATTEMPTS - wrongAttempts ? 'wrong-attempt' : 'initial-state';
+		}
+	);
+
+	$: verifyCurrentLetterWasTried = (letter: string): boolean => {
+		const currentLetterWasTried = attempts.includes(letter);
+		return currentLetterWasTried;
+	};
+
+	$: verifyLetterIsWrongAttempt = (letter: string): boolean => {
+		const isWrongAttempt = attempts.includes(letter) && !letters.includes(letter);
+		return isWrongAttempt;
+	};
+
+	$: verifyLetterIsRightAttempt = (letter: string): boolean => {
+		const isRightAttempt = attempts.includes(letter) && letters.includes(letter);
+		return isRightAttempt;
+	};
 
 	const handleCreateRoom = () => {
-		socket.emit('create-room', (room: string) => goto(`/room/${room}`));
+		socket.emit('create-room', (room: string) => {
+			roomProperties.code = room;
+			roomProperties.status = 'playing';
+			roomProperties.playerType = PlayerType.Admin;
+		});
 	};
 	const handleJoinRoom = () => {
 		socket.emit('join-room', roomCode, (error?: Error) => {
-			if (!error) {
-				return goto(`/room/${roomCode}`);
+			if (error) {
+				return toast.error(error.message);
 			}
 
-			return toast.error(error.message);
+			roomProperties.code = roomCode;
+			roomProperties.status = 'playing';
+			roomProperties.playerType = PlayerType.Guest;
 		});
 	};
+
+	const handleSetWord = () => {
+		socket.emit('set-word', { roomCode: roomProperties.code, word }, (error?: Error) => {
+			if (error) {
+				return toast.error(error.message);
+			}
+
+			newWordModalIsOpen = false;
+		});
+	};
+
+	const handleCopyRoomCode = () => {
+		if (!roomProperties.code) return;
+
+		window.navigator.clipboard
+			.writeText(roomProperties.code)
+			.then(() => {
+				toast.success('O código da sala foi copiado!');
+			})
+			.catch(() => {
+				toast.error('Ops! Ocorreu um erro ao copiar o código. Tente novamente');
+			});
+	};
+
+	onMount(() => {
+		socket.on('choose-word', () => {
+			newWordModalIsOpen = true;
+		});
+		socket.on('chosen-word', (amountLetters) => {
+			chooseWordAmountLetters = amountLetters;
+		});
+
+		socket.on('notification', (notification: NotificationResponse) => {
+			const toastTypeByNotificationType: Record<NotificationType, 'success'> = {
+				[NotificationType.Success]: 'success'
+			};
+			const toastType = toastTypeByNotificationType[notification.type];
+			toast[toastType](notification.message);
+		});
+	});
 </script>
 
-<section>
-	<div class="highlight">
-		<h1>Multiplayer Hangman</h1>
-		<h2>🤓 guess or die 💀</h2>
-	</div>
+{#if roomProperties.status === 'playing'}
+	<header class="page-header">
+		<button
+			type="button"
+			class="back"
+			title="Left room"
+			on:click={() => (roomProperties.status = 'join-or-create')}
+		>
+			<IconArrowLeft size="2rem" />
+		</button>
 
-	<div class="controls-container">
-		<div class="input-container">
-			<div class="input-wrapper">
-				<input
-					placeholder="Room code"
-					value={roomCode}
-					on:change={(value) => (roomCode = value.currentTarget.value)}
-				/>
-				<button type="button" on:click={handleJoinRoom}>
-					<IconSend2 size="1.75rem" />
-				</button>
+		<button
+			type="button"
+			class="copy-room-code"
+			title="Copy room code"
+			on:click={handleCopyRoomCode}
+		>
+			<IconCopy />
+			{roomProperties.code}
+		</button>
+	</header>
+{/if}
+
+{#if roomProperties.status === 'join-or-create'}
+	<section class="join-or-create-section">
+		<div class="highlight">
+			<h1>Multiplayer Hangman</h1>
+			<h2>🤓 guess or die 💀</h2>
+		</div>
+
+		<div class="controls-container">
+			<div class="input-container insert-room-code">
+				<div class="input-wrapper insert-room-code">
+					<input
+						placeholder="Room code"
+						value={roomCode}
+						on:change={(value) => (roomCode = value.currentTarget.value)}
+					/>
+					<button type="button" on:click={handleJoinRoom}>
+						<IconSend2 size="1.75rem" />
+					</button>
+				</div>
+
+				<div class="input-info insert-room-code">
+					<IconInfoCircle size="0.75rem" />
+					<span>Enter room code</span>
+				</div>
 			</div>
 
-			<div class="input-info">
+			<span class="conditional-label">
+				<span></span>
+				or
+				<span></span>
+			</span>
+
+			<button class="new-room" on:click={handleCreateRoom}>Create room</button>
+		</div>
+	</section>
+{/if}
+
+{#if roomProperties.status === 'playing'}
+	<section class="playing-section">
+		<div class="attempts-status">
+			{#each attemptsStatus as attemptStatus}
+				{#if attemptStatus === 'initial-state'}
+					<IconHeartFilled color="var(--color-danger-primary)" size="2rem" />
+				{:else}
+					<IconHeart color="var(--color-danger-primary)" size="2rem" />
+				{/if}
+			{/each}
+		</div>
+
+		<div class="letters-container">
+			{#each letters as letter}
+				{#if verifyCurrentLetterWasTried(letter)}
+					<p>{letter}</p>
+				{:else}
+					<p>_</p>
+				{/if}
+			{/each}
+		</div>
+
+		<div class="keyboard-container">
+			{#each ALPHABET_LETTERS as alphabetLetter}
+				<button
+					on:click={() => (attempts = [...attempts, alphabetLetter])}
+					class:wrong-attempt={verifyLetterIsWrongAttempt(alphabetLetter)}
+					class:right-attempt={verifyLetterIsRightAttempt(alphabetLetter)}
+					disabled={verifyLetterIsWrongAttempt(alphabetLetter) ||
+						verifyLetterIsRightAttempt(alphabetLetter)}>{alphabetLetter}</button
+				>
+			{/each}
+		</div>
+	</section>
+{/if}
+
+<Modal isOpen={newWordModalIsOpen}>
+	<div class="new-word-container">
+		<h2 class="new-word-title">It's your turn!</h2>
+
+		<div class="input-container new-word">
+			<div class="input-wrapper new-word">
+				<input
+					placeholder="Type a word"
+					value={word}
+					on:change={(event) => (word = event.currentTarget.value)}
+				/>
+			</div>
+
+			<div class="input-info new-word">
 				<IconInfoCircle size="0.75rem" />
-				<span>Enter room code</span>
+				<span>Type a word for your opponent</span>
 			</div>
 		</div>
 
-		<span class="conditional-label">
-			<span></span>
-			or
-			<span></span>
-		</span>
-
-		<button class="new-room" on:click={handleCreateRoom}>Create room</button>
+		<button class="new-word-submit-button" on:click={handleSetWord}>Let's go</button>
 	</div>
-</section>
+</Modal>
 
 <style>
-	section {
+	.join-or-create-section {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 		align-items: center;
 		gap: 2rem;
+		padding: 2rem;
+	}
+
+	.playing-section {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		gap: 6rem;
 		padding: 2rem;
 	}
 
@@ -123,13 +315,13 @@
 		background-color: var(--color-neutral-primary);
 	}
 
-	.input-container {
+	.input-container.insert-room-code {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
 	}
 
-	.input-wrapper {
+	.input-wrapper.insert-room-code {
 		height: 4rem;
 		display: flex;
 		align-items: center;
@@ -138,7 +330,7 @@
 		border-radius: 0.5rem;
 	}
 
-	.input-wrapper > input {
+	.input-wrapper.insert-room-code > input {
 		width: 100%;
 		height: 100%;
 		font-size: 1.25rem;
@@ -152,30 +344,197 @@
 		text-transform: uppercase;
 	}
 
-	.input-wrapper > input::placeholder {
+	.input-wrapper.insert-room-code > input::placeholder {
 		font-size: 1.25rem;
 		font-weight: 600;
 		opacity: 0.25;
 		text-transform: none;
 	}
 
-	.input-wrapper > button {
+	.input-wrapper.insert-room-code > button {
 		border: none;
 		background-color: transparent;
 		color: var(--color-neutral-primary);
 		padding: 0.5rem;
 	}
 
-	.input-wrapper > input:read-only:hover,
-	.input-wrapper > button:hover {
+	.input-wrapper.insert-room-code > input:read-only:hover,
+	.input-wrapper.insert-room-code > button:hover {
 		cursor: pointer;
 	}
 
-	.input-info {
+	.input-info.insert-room-code {
 		display: flex;
 		align-items: center;
 		gap: 0.25rem;
 		font-size: 0.875rem;
 		color: var(--color-neutral-secondary);
+	}
+
+	.page-header {
+		width: 100%;
+		height: 6rem;
+		padding-left: 2rem;
+		padding-right: 2rem;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.back {
+		height: 2.5rem;
+		width: 2.5rem;
+		background-color: transparent;
+	}
+	.back:hover {
+		background-color: color-mix(in srgb, var(--color-neutral-primary) 7.5%, transparent);
+	}
+
+	.copy-room-code {
+		display: flex;
+		gap: 4px;
+		align-items: center;
+		font-size: 1.25rem;
+		font-weight: 600;
+		padding: 0.5rem 1rem;
+		background-color: color-mix(in srgb, var(--color-neutral-secondary) 80%, transparent);
+	}
+	.copy-room-code:hover {
+		filter: brightness(0.95);
+	}
+
+	.back,
+	.copy-room-code {
+		border: none;
+		border-radius: 999px;
+		color: var(--color-neutral-primary);
+	}
+	.back:hover,
+	.copy-room-code:hover {
+		cursor: pointer;
+	}
+
+	.attempts-status {
+		display: flex;
+		gap: 0.25rem;
+		background-color: var(--color-neutral-secondary);
+		border-radius: 999px;
+		padding: 0.5rem 0.75rem;
+		box-shadow: 0px 0px 0.25rem color-mix(in srgb, var(--color-neutral-primary) 40%, transparent);
+	}
+
+	.letters-container {
+		display: flex;
+		gap: 1rem;
+	}
+
+	.letters-container > p {
+		font-size: 2.5rem;
+		font-weight: 600;
+		color: var(--color-neutral-primary);
+	}
+
+	.keyboard-container {
+		display: flex;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		width: 100%;
+		max-width: 28rem;
+	}
+
+	.keyboard-container > button {
+		width: 4rem;
+		height: 4rem;
+		font-size: 1.5rem;
+		background-color: var(--color-neutral-secondary);
+		box-shadow: 0px 0px 0.25rem color-mix(in srgb, var(--color-neutral-primary) 50%, transparent);
+		border: transparent;
+		border-radius: 0.5rem;
+		color: var(--color-neutral-primary);
+	}
+	.keyboard-container > button:not(.wrong-attempt, .right-attempt):hover {
+		cursor: pointer;
+		filter: brightness(0.95);
+	}
+
+	.keyboard-container > button.wrong-attempt {
+		background-color: var(--color-danger-primary);
+		color: var(--color-neutral-secondary);
+	}
+	.keyboard-container > button.right-attempt {
+		background-color: var(--color-brand-secondary);
+	}
+
+	.new-word-container {
+		width: 26rem;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+
+		@media screen and (max-width: 540px) {
+			width: 20rem;
+		}
+	}
+
+	.new-word-title {
+		font-size: 1.75rem;
+		font-weight: 600;
+		color: var(--color-neutral-primary);
+	}
+
+	.input-container.new-word {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.input-wrapper.new-word {
+		height: 4rem;
+		display: flex;
+		align-items: center;
+		padding: 0.5rem;
+		border: 1px solid color-mix(in srgb, var(--color-neutral-primary) 35%, transparent);
+		border-radius: 0.5rem;
+	}
+	.input-wrapper.new-word > input {
+		width: 100%;
+		height: 100%;
+		font-size: 1.25rem;
+		font-weight: 600;
+		padding-left: 0.5rem;
+		color: var(--color-neutral-primary);
+		border: none;
+		border-radius: 0.25rem;
+		background-color: transparent;
+		outline: none;
+		text-transform: uppercase;
+	}
+	.input-wrapper.new-word > input::placeholder {
+		font-size: 1.25rem;
+		font-weight: 400;
+		opacity: 0.25;
+		text-transform: none;
+	}
+	.input-info.new-word {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		font-size: 0.875rem;
+		color: color-mix(in srgb, var(--color-neutral-primary) 35%, transparent);
+	}
+	.new-word-submit-button {
+		min-height: 4rem;
+		max-height: 4rem;
+		flex: 1;
+		font-size: 1.5rem;
+		font-weight: 600;
+		border: none;
+		border-radius: 0.5rem;
+		background-color: var(--color-neutral-primary);
+		color: var(--color-neutral-secondary);
+	}
+	.new-word-submit-button:hover {
+		cursor: pointer;
+		filter: brightness(0.9);
 	}
 </style>
