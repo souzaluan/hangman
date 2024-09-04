@@ -72,6 +72,8 @@
 			const toastType = toastTypeByNotificationType[notification.type];
 			toast[toastType](notification.message);
 		});
+
+		socket.on('choose-word', () => (newWordModalIsOpen = true));
 	});
 </script>
 

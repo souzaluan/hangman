@@ -50,9 +50,11 @@ io.on('connection', (socket) => {
 
     const room = rooms.find((_room) => _room.id === code);
 
-    if (!room) return callback(new NotFoundError());
+    if (!room) return callback(new NotFoundError('Sala não encontrada.'));
 
-    const playersInRoom = players.filter((player) => player.roomCode === code);
+    const playersInRoom = players.filter(
+      (_player) => _player.roomCode === code
+    );
 
     const player = Player.create({
       id: socket.id,
@@ -63,6 +65,12 @@ io.on('connection', (socket) => {
     players.push(player);
 
     socket.join(room.id);
+
+    if (playersInRoom.length === 1) {
+      const playerChoosesWord = playersInRoom[0];
+      room.playerChoosesWord = playerChoosesWord;
+      socket.to(playerChoosesWord.id).emit('choose-word');
+    }
 
     socket
       .in(room.id)
