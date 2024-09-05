@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { socket } from '$lib/socket';
-	import { NotificationType, PlayerType } from '$server/constants';
-	import type { NotificationResponse } from '$server/responses';
+	import { NotificationType } from '$server/constants';
+	import type { NotificationResponse, SetupResponse } from '$server/responses';
 
 	import { IconHeart, IconHeartFilled } from '@tabler/icons-svelte';
 	import { onMount } from 'svelte';
@@ -10,32 +10,25 @@
 	import Header from '$components/header.svelte';
 	import Input from '$components/input.svelte';
 
-	interface RoomProperties {
-		status: 'join-or-create' | 'playing';
-		code?: string;
-		playerType?: PlayerType;
-	}
-
-	const MAX_ATTEMPTS = 5;
 	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) => String.fromCharCode(index + 65));
 
-	let roomCode: string = '';
-	let roomProperties: RoomProperties = {
-		status: 'join-or-create'
-	};
+	let setup: SetupResponse | null = null;
+	$: status = setup ? 'playing' : 'joining-or-creating';
+	$: maxAttempts = setup?.room.maxAttempts ?? 0;
 
 	let word = 'SECRET';
 	let newWordModalIsOpen = false;
-	let chooseWordAmountLetters: number;
+
+	let roomCode = '';
 
 	$: letters = word?.split('') ?? [];
 
 	let attempts: string[] = [];
 	$: wrongAttempts = attempts.filter((attempt) => !letters.includes(attempt)).length;
 	$: attemptsStatus = Array.from(
-		{ length: MAX_ATTEMPTS },
+		{ length: maxAttempts },
 		(_, index): 'wrong-attempt' | 'initial-state' => {
-			return index >= MAX_ATTEMPTS - wrongAttempts ? 'wrong-attempt' : 'initial-state';
+			return index >= maxAttempts - wrongAttempts ? 'wrong-attempt' : 'initial-state';
 		}
 	);
 
@@ -55,26 +48,23 @@
 	};
 
 	const handleCreateRoom = () => {
-		socket.emit('create-room', (room: string) => {
-			roomProperties.code = room;
-			roomProperties.status = 'playing';
-			roomProperties.playerType = PlayerType.Admin;
+		socket.emit('create-room', (_setup: SetupResponse) => {
+			console.log(_setup);
+			setup = _setup;
 		});
 	};
 	const handleJoinRoom = () => {
-		socket.emit('join-room', roomCode, (error?: Error) => {
+		socket.emit('join-room', roomCode, (_setup: SetupResponse | null, error: string | null) => {
 			if (error) {
-				return toast.error(error.message);
+				return toast.error(error);
 			}
 
-			roomProperties.code = roomCode;
-			roomProperties.status = 'playing';
-			roomProperties.playerType = PlayerType.Guest;
+			setup = _setup;
 		});
 	};
 
 	const handleSetWord = () => {
-		socket.emit('set-word', { roomCode: roomProperties.code, word }, (error?: Error) => {
+		socket.emit('set-word', { roomCode: setup?.room.id, word }, (error?: Error) => {
 			if (error) {
 				return toast.error(error.message);
 			}
@@ -84,10 +74,10 @@
 	};
 
 	const handleCopyRoomCode = () => {
-		if (!roomProperties.code) return;
+		if (!setup?.room.id) return;
 
 		window.navigator.clipboard
-			.writeText(roomProperties.code)
+			.writeText(setup.room.id)
 			.then(() => {
 				toast.success('O código da sala foi copiado!');
 			})
@@ -97,16 +87,14 @@
 	};
 
 	const handleLeftRoom = () => {
-		roomProperties.status = 'join-or-create';
+		setup = null;
 	};
 
 	onMount(() => {
 		socket.on('choose-word', () => {
 			newWordModalIsOpen = true;
 		});
-		socket.on('chosen-word', (amountLetters) => {
-			chooseWordAmountLetters = amountLetters;
-		});
+		socket.on('chosen-word', () => {});
 
 		socket.on('notification', (notification: NotificationResponse) => {
 			const toastTypeByNotificationType: Record<NotificationType, 'success'> = {
@@ -118,7 +106,7 @@
 	});
 </script>
 
-{#if roomProperties.status === 'join-or-create'}
+{#if status === 'joining-or-creating'}
 	<section class="join-or-create-section">
 		<div class="highlight">
 			<h1>Multiplayer Hangman</h1>
@@ -145,9 +133,9 @@
 	</section>
 {/if}
 
-{#if roomProperties.status === 'playing'}
+{#if status === 'playing'}
 	<Header
-		roomCode={roomProperties.code ?? ''}
+		roomCode={setup?.room.id ?? ''}
 		onCopyRoomCode={handleCopyRoomCode}
 		onLeftRoom={handleLeftRoom}
 	/>

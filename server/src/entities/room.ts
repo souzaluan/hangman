@@ -3,6 +3,7 @@ import Player from './player';
 
 interface RoomProps {
   id: string;
+  maxAttempts: number;
   playerChoosesWord?: Player;
   word?: string;
 }
@@ -18,6 +19,10 @@ class Room extends Entity<Omit<RoomProps, 'id'>> {
 
   get word() {
     return this.props.word ?? '';
+  }
+
+  get maxAttempts() {
+    return this.props.maxAttempts;
   }
 
   static create({ id, ...props }: RoomProps) {
