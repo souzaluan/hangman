@@ -21,7 +21,7 @@
 
 	let roomCode = '';
 
-	$: letters = word?.split('') ?? [];
+	let letters: string[] = [];
 
 	let attempts: string[] = [];
 	$: wrongAttempts = attempts.filter((attempt) => !letters.includes(attempt)).length;
@@ -94,7 +94,9 @@
 		socket.on('choose-word', () => {
 			newWordModalIsOpen = true;
 		});
-		socket.on('chosen-word', () => {});
+		socket.on('chosen-word', (wordLength) => {
+			letters = Array.from({ length: wordLength }, () => '_');
+		});
 
 		socket.on('notification', (notification: NotificationResponse) => {
 			const toastTypeByNotificationType: Record<NotificationType, 'success'> = {
