@@ -5,8 +5,8 @@ import { Server } from 'socket.io';
 import crypto from 'node:crypto';
 import { PlayerType } from './constants';
 import { Player, Room } from './entities';
-import { NotFoundError } from './errors';
 import { SuccessNotification } from './notifications';
+import { SetupResponse } from './responses';
 
 const app = express();
 
@@ -30,7 +30,7 @@ io.on('connection', (socket) => {
 
     const roomCode = crypto.randomUUID();
 
-    const room = Room.create({ id: roomCode });
+    const room = Room.create({ id: roomCode, maxAttempts: 5 });
     rooms.push(room);
 
     const player = Player.create({
@@ -42,7 +42,20 @@ io.on('connection', (socket) => {
     players.push(player);
 
     socket.join(roomCode);
-    callback(roomCode);
+
+    const setup: SetupResponse = {
+      room: {
+        id: room.id,
+        maxAttempts: room.maxAttempts,
+      },
+      me: {
+        id: player.id,
+        name: player.name,
+        type: player.type,
+      },
+    };
+
+    callback(setup);
   });
 
   socket.on('join-room', (code, callback) => {
@@ -50,13 +63,25 @@ io.on('connection', (socket) => {
 
     const room = rooms.find((_room) => _room.id === code);
 
-    if (!room) return callback(new NotFoundError());
+    const playersInRoom = players.filter(
+      (_player) => _player.roomCode === code
+    );
 
-    const playersInRoom = players.filter((player) => player.roomCode === code);
+    const amountPlayersInRoom = playersInRoom.length;
+
+    const isValidRoom = room && amountPlayersInRoom > 0;
+
+    if (!isValidRoom) {
+      return callback(null, 'Sala não encontrada.');
+    }
+
+    if (amountPlayersInRoom > 1) {
+      return callback(null, 'A sala está cheia.');
+    }
 
     const player = Player.create({
       id: socket.id,
-      name: `Player ${playersInRoom.length + 1}`,
+      name: `Player ${amountPlayersInRoom + 1}`,
       type: PlayerType.Guest,
       roomCode: room.id,
     });
@@ -64,12 +89,45 @@ io.on('connection', (socket) => {
 
     socket.join(room.id);
 
+    const playerChoosesWord = playersInRoom[0];
+    room.playerChoosesWord = playerChoosesWord;
+    socket.to(playerChoosesWord.id).emit('choose-word');
+
     socket
       .in(room.id)
       .emit('notification', new SuccessNotification(`${player.name} joined!`));
 
-    callback();
+    const setup: SetupResponse = {
+      room: {
+        id: room.id,
+        maxAttempts: room.maxAttempts,
+      },
+      me: {
+        id: player.id,
+        name: player.name,
+        type: player.type,
+      },
+    };
+
+    callback(setup, null);
   });
+
+  socket.on(
+    'set-word',
+    ({ roomCode, word }: { roomCode: string; word: string }, callback) => {
+      console.log('> set word');
+
+      const room = rooms.find((_room) => _room.id === roomCode);
+
+      if (!room) return callback('Sala não encontrada.');
+
+      room.word = word;
+
+      io.in(room.id).emit('chosen-word', word.length);
+
+      callback();
+    }
+  );
 });
 
-http.listen(3333);
+http.listen(3333, () => console.log('> server is running'));

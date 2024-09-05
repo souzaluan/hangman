@@ -1,2 +1,2 @@
 export { default as NotificationResponse } from './notification';
-export { default as ErrorResponse } from './error';
+export { default as SetupResponse } from './setup';
