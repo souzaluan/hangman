@@ -3,17 +3,12 @@
 	import { NotificationType, PlayerType } from '$server/constants';
 	import type { NotificationResponse } from '$server/responses';
 
-	import {
-		IconArrowLeft,
-		IconCopy,
-		IconHeart,
-		IconHeartFilled,
-		IconInfoCircle,
-		IconSend2
-	} from '@tabler/icons-svelte';
+	import { IconHeart, IconHeartFilled } from '@tabler/icons-svelte';
 	import { onMount } from 'svelte';
 	import toast from 'svelte-french-toast';
-	import Modal from '../components/modal.svelte';
+	import Modal from '$components/modal.svelte';
+	import Header from '$components/header.svelte';
+	import Input from '$components/input.svelte';
 
 	interface RoomProperties {
 		status: 'join-or-create' | 'playing';
@@ -101,6 +96,10 @@
 			});
 	};
 
+	const handleLeftRoom = () => {
+		roomProperties.status = 'join-or-create';
+	};
+
 	onMount(() => {
 		socket.on('choose-word', () => {
 			newWordModalIsOpen = true;
@@ -119,29 +118,6 @@
 	});
 </script>
 
-{#if roomProperties.status === 'playing'}
-	<header class="page-header">
-		<button
-			type="button"
-			class="back"
-			title="Left room"
-			on:click={() => (roomProperties.status = 'join-or-create')}
-		>
-			<IconArrowLeft size="2rem" />
-		</button>
-
-		<button
-			type="button"
-			class="copy-room-code"
-			title="Copy room code"
-			on:click={handleCopyRoomCode}
-		>
-			<IconCopy />
-			{roomProperties.code}
-		</button>
-	</header>
-{/if}
-
 {#if roomProperties.status === 'join-or-create'}
 	<section class="join-or-create-section">
 		<div class="highlight">
@@ -150,23 +126,13 @@
 		</div>
 
 		<div class="controls-container">
-			<div class="input-container insert-room-code">
-				<div class="input-wrapper insert-room-code">
-					<input
-						placeholder="Room code"
-						value={roomCode}
-						on:change={(value) => (roomCode = value.currentTarget.value)}
-					/>
-					<button type="button" on:click={handleJoinRoom}>
-						<IconSend2 size="1.75rem" />
-					</button>
-				</div>
-
-				<div class="input-info insert-room-code">
-					<IconInfoCircle size="0.75rem" />
-					<span>Enter room code</span>
-				</div>
-			</div>
+			<Input
+				info="Enter room code"
+				placeholder="Room code"
+				value={roomCode}
+				onSubmit={handleJoinRoom}
+				onChange={(value) => (roomCode = value)}
+			/>
 
 			<span class="conditional-label">
 				<span></span>
@@ -180,6 +146,12 @@
 {/if}
 
 {#if roomProperties.status === 'playing'}
+	<Header
+		roomCode={roomProperties.code ?? ''}
+		onCopyRoomCode={handleCopyRoomCode}
+		onLeftRoom={handleLeftRoom}
+	/>
+
 	<section class="playing-section">
 		<div class="attempts-status">
 			{#each attemptsStatus as attemptStatus}
@@ -213,30 +185,23 @@
 			{/each}
 		</div>
 	</section>
-{/if}
 
-<Modal isOpen={newWordModalIsOpen}>
-	<div class="new-word-container">
-		<h2 class="new-word-title">It's your turn!</h2>
+	<Modal isOpen={newWordModalIsOpen}>
+		<div class="new-word-container">
+			<h2 class="new-word-title">It's your turn!</h2>
 
-		<div class="input-container new-word">
-			<div class="input-wrapper new-word">
-				<input
-					placeholder="Type a word"
-					value={word}
-					on:change={(event) => (word = event.currentTarget.value)}
-				/>
-			</div>
+			<Input
+				info="Type a word for your opponent"
+				placeholder="Type a word"
+				variant="secondary"
+				value={word}
+				onChange={(value) => (word = value)}
+			/>
 
-			<div class="input-info new-word">
-				<IconInfoCircle size="0.75rem" />
-				<span>Type a word for your opponent</span>
-			</div>
+			<button class="new-word-submit-button" on:click={handleSetWord}>Let's go</button>
 		</div>
-
-		<button class="new-word-submit-button" on:click={handleSetWord}>Let's go</button>
-	</div>
-</Modal>
+	</Modal>
+{/if}
 
 <style>
 	.join-or-create-section {
@@ -315,105 +280,6 @@
 		background-color: var(--color-neutral-primary);
 	}
 
-	.input-container.insert-room-code {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.input-wrapper.insert-room-code {
-		height: 4rem;
-		display: flex;
-		align-items: center;
-		padding: 0.5rem;
-		background-color: var(--color-neutral-secondary);
-		border-radius: 0.5rem;
-	}
-
-	.input-wrapper.insert-room-code > input {
-		width: 100%;
-		height: 100%;
-		font-size: 1.25rem;
-		font-weight: 600;
-		padding-left: 0.5rem;
-		color: var(--color-neutral-primary);
-		border: none;
-		border-radius: 0.25rem;
-		background-color: transparent;
-		outline: none;
-		text-transform: uppercase;
-	}
-
-	.input-wrapper.insert-room-code > input::placeholder {
-		font-size: 1.25rem;
-		font-weight: 600;
-		opacity: 0.25;
-		text-transform: none;
-	}
-
-	.input-wrapper.insert-room-code > button {
-		border: none;
-		background-color: transparent;
-		color: var(--color-neutral-primary);
-		padding: 0.5rem;
-	}
-
-	.input-wrapper.insert-room-code > input:read-only:hover,
-	.input-wrapper.insert-room-code > button:hover {
-		cursor: pointer;
-	}
-
-	.input-info.insert-room-code {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		font-size: 0.875rem;
-		color: var(--color-neutral-secondary);
-	}
-
-	.page-header {
-		width: 100%;
-		height: 6rem;
-		padding-left: 2rem;
-		padding-right: 2rem;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-
-	.back {
-		height: 2.5rem;
-		width: 2.5rem;
-		background-color: transparent;
-	}
-	.back:hover {
-		background-color: color-mix(in srgb, var(--color-neutral-primary) 7.5%, transparent);
-	}
-
-	.copy-room-code {
-		display: flex;
-		gap: 4px;
-		align-items: center;
-		font-size: 1.25rem;
-		font-weight: 600;
-		padding: 0.5rem 1rem;
-		background-color: color-mix(in srgb, var(--color-neutral-secondary) 80%, transparent);
-	}
-	.copy-room-code:hover {
-		filter: brightness(0.95);
-	}
-
-	.back,
-	.copy-room-code {
-		border: none;
-		border-radius: 999px;
-		color: var(--color-neutral-primary);
-	}
-	.back:hover,
-	.copy-room-code:hover {
-		cursor: pointer;
-	}
-
 	.attempts-status {
 		display: flex;
 		gap: 0.25rem;
@@ -483,45 +349,6 @@
 		color: var(--color-neutral-primary);
 	}
 
-	.input-container.new-word {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-	.input-wrapper.new-word {
-		height: 4rem;
-		display: flex;
-		align-items: center;
-		padding: 0.5rem;
-		border: 1px solid color-mix(in srgb, var(--color-neutral-primary) 35%, transparent);
-		border-radius: 0.5rem;
-	}
-	.input-wrapper.new-word > input {
-		width: 100%;
-		height: 100%;
-		font-size: 1.25rem;
-		font-weight: 600;
-		padding-left: 0.5rem;
-		color: var(--color-neutral-primary);
-		border: none;
-		border-radius: 0.25rem;
-		background-color: transparent;
-		outline: none;
-		text-transform: uppercase;
-	}
-	.input-wrapper.new-word > input::placeholder {
-		font-size: 1.25rem;
-		font-weight: 400;
-		opacity: 0.25;
-		text-transform: none;
-	}
-	.input-info.new-word {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		font-size: 0.875rem;
-		color: color-mix(in srgb, var(--color-neutral-primary) 35%, transparent);
-	}
 	.new-word-submit-button {
 		min-height: 4rem;
 		max-height: 4rem;
