@@ -25,7 +25,7 @@ const rooms: Room[] = [];
 io.on('connection', (socket) => {
   console.log('> new connection: ', socket.id);
 
-  socket.on('create-room', (callback) => {
+  socket.on('create-room', () => {
     console.log('> create room');
 
     const roomCode = crypto.randomUUID();
@@ -47,6 +47,11 @@ io.on('connection', (socket) => {
       room: {
         id: room.id,
         maxAttempts: room.maxAttempts,
+        remainingAttempts: room.remainingAttempts ?? room.maxAttempts,
+        wrongGuesses: room.wrongGuesses,
+        correctGuesses: room.correctGuesses,
+        letters: room.letters,
+        wordLength: room.word.length,
       },
       me: {
         id: player.id,
@@ -55,7 +60,7 @@ io.on('connection', (socket) => {
       },
     };
 
-    callback(setup);
+    socket.emit('setup', setup);
   });
 
   socket.on('join-room', (code, callback) => {
@@ -72,11 +77,11 @@ io.on('connection', (socket) => {
     const isValidRoom = room && amountPlayersInRoom > 0;
 
     if (!isValidRoom) {
-      return callback(null, 'Sala não encontrada.');
+      return callback('Sala não encontrada.');
     }
 
     if (amountPlayersInRoom > 1) {
-      return callback(null, 'A sala está cheia.');
+      return callback('A sala está cheia.');
     }
 
     const player = Player.create({
@@ -101,6 +106,11 @@ io.on('connection', (socket) => {
       room: {
         id: room.id,
         maxAttempts: room.maxAttempts,
+        remainingAttempts: room.remainingAttempts ?? room.maxAttempts,
+        wrongGuesses: room.wrongGuesses,
+        correctGuesses: room.correctGuesses,
+        letters: room.letters,
+        wordLength: room.word.length,
       },
       me: {
         id: player.id,
@@ -109,7 +119,9 @@ io.on('connection', (socket) => {
       },
     };
 
-    callback(setup, null);
+    io.in(room.id).emit('setup', setup);
+
+    callback();
   });
 
   socket.on(
@@ -117,17 +129,84 @@ io.on('connection', (socket) => {
     ({ roomCode, word }: { roomCode: string; word: string }, callback) => {
       console.log('> set word');
 
+      const player = players.find((_player) => _player.id === socket.id);
+
       const room = rooms.find((_room) => _room.id === roomCode);
 
-      if (!room) return callback('Sala não encontrada.');
+      if (!room || !player) return callback('Ops, ocorreu um erro.');
 
       room.word = word;
+      room.letters = Array.from({ length: room.word.length }, () => '_');
 
-      io.in(room.id).emit('chosen-word', word.length);
+      const setup: SetupResponse = {
+        room: {
+          id: room.id,
+          maxAttempts: room.maxAttempts,
+          remainingAttempts: room.remainingAttempts ?? room.maxAttempts,
+          wrongGuesses: room.wrongGuesses,
+          correctGuesses: room.correctGuesses,
+          letters: room.letters,
+          wordLength: room.word.length,
+        },
+        me: {
+          id: player.id,
+          name: player.name,
+          type: player.type,
+        },
+      };
+
+      io.in(room.id).emit('setup', setup);
 
       callback();
     }
   );
+
+  socket.on('take-guess', (letter: string, callback) => {
+    console.log('> take guess');
+
+    const player = players.find((_player) => _player.id === socket.id);
+
+    const room = rooms.find((_room) => _room.id === player?.roomCode);
+
+    if (!room || !player) return callback('Ops, ocorreu um erro.');
+
+    const normalizedLetter = letter.trim().toUpperCase();
+    const isCorrectGuess = room.word.includes(normalizedLetter);
+
+    if (isCorrectGuess) {
+      room.addCorrectGuess(normalizedLetter);
+    } else {
+      room.decrementRemainingAttempts();
+      room.addWrongGuess(normalizedLetter);
+    }
+
+    room.word.split('').forEach((_letter, index) => {
+      if (_letter === normalizedLetter) {
+        room.letters[index] = _letter;
+      }
+    });
+
+    const setup: SetupResponse = {
+      room: {
+        id: room.id,
+        maxAttempts: room.maxAttempts,
+        remainingAttempts: room.remainingAttempts ?? room.maxAttempts,
+        wrongGuesses: room.wrongGuesses,
+        correctGuesses: room.correctGuesses,
+        letters: room.letters,
+        wordLength: room.word.length,
+      },
+      me: {
+        id: player.id,
+        name: player.name,
+        type: player.type,
+      },
+    };
+
+    io.in(room.id).emit('setup', setup);
+
+    callback();
+  });
 });
 
 http.listen(3333, () => console.log('> server is running'));
