@@ -2,7 +2,6 @@
 	import { IconInfoCircle, IconSend2 } from '@tabler/icons-svelte';
 
 	export let value: string;
-	export let onChange: (value: string) => void;
 	export let placeholder: string;
 
 	export let onSubmit: (() => void) | undefined = undefined;
@@ -12,8 +11,12 @@
 </script>
 
 <div class="container">
-	<div class={`wrapper ${variant}`}>
-		<input {placeholder} bind:value on:input={(event) => onChange(event.currentTarget.value)} />
+	<div
+		class="wrapper"
+		class:primary={variant === 'primary'}
+		class:secondary={variant === 'secondary'}
+	>
+		<input {placeholder} bind:value />
 		{#if onSubmit}
 			<button type="button" on:click={onSubmit}>
 				<IconSend2 size="1.75rem" />
@@ -21,7 +24,7 @@
 		{/if}
 	</div>
 
-	<div class={`info ${variant}`}>
+	<div class="info" class:primary={variant === 'primary'} class:secondary={variant === 'secondary'}>
 		<IconInfoCircle size="0.75rem" />
 		<span>{info}</span>
 	</div>

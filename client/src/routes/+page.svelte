@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { socket } from '$lib/socket';
 	import { NotificationType } from '$server/constants';
-	import type { NotificationResponse, SetupResponse } from '$server/responses';
+	import type { NotificationResponse, ProfileResponse, SetupResponse } from '$server/responses';
 
 	import { IconHeart, IconHeartFilled } from '@tabler/icons-svelte';
 	import { onMount } from 'svelte';
@@ -13,9 +13,13 @@
 	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) =>
 		String.fromCharCode(index + 65).toUpperCase()
 	);
+
 	let roomCode = '';
-	let word = '';
+
+	let newWord = '';
 	let newWordModalIsOpen = false;
+
+	let profile: ProfileResponse | null = null;
 
 	let setup: SetupResponse | null = null;
 	$: letters = setup?.room.letters ?? [];
@@ -24,6 +28,8 @@
 	$: remainingAttempts = setup?.room.remainingAttempts ?? 0;
 	$: wrongGuesses = setup?.room.wrongGuesses ?? [];
 	$: correctGuesses = setup?.room.correctGuesses ?? [];
+	$: playerChoosesWordIsMe = profile && setup && profile.id === setup.room.playerChoosesWord;
+	$: hasChosenWord = !!setup?.room.wordLength;
 
 	$: guessessStatus = Array.from(
 		{ length: maxAttempts },
@@ -57,7 +63,12 @@
 		});
 	};
 	const handleSetWord = () => {
-		socket.emit('set-word', { roomCode: setup?.room.id, word }, (error?: Error) => {
+		if (!newWord.trim()) return toast.error('Digite uma palavra.');
+		if (newWord.includes(' ')) return toast.error('Não pode conter espaços.');
+		const hasNumberRegex = /\d/;
+		if (hasNumberRegex.test(newWord)) return toast.error('A palavra não pode conter números.');
+
+		socket.emit('set-word', { roomCode: setup?.room.id, word: newWord }, (error?: Error) => {
 			if (error) {
 				return toast.error(error.message);
 			}
@@ -97,6 +108,9 @@
 		socket.on('setup', (_setup) => {
 			setup = _setup;
 		});
+		socket.on('profile', (_profile) => {
+			profile = _profile;
+		});
 		socket.on('notification', (notification: NotificationResponse) => {
 			const toastTypeByNotificationType: Record<NotificationType, 'success'> = {
 				[NotificationType.Success]: 'success'
@@ -118,9 +132,8 @@
 			<Input
 				info="Enter room code"
 				placeholder="Room code"
-				value={roomCode}
+				bind:value={roomCode}
 				onSubmit={handleJoinRoom}
-				onChange={(value) => (roomCode = value)}
 			/>
 
 			<span class="conditional-label">
@@ -165,7 +178,9 @@
 					class:wrong-guess={verifyLetterIsWrongGuess(alphabetLetter)}
 					class:correct-guess={verifyLetterIsCorrectGuess(alphabetLetter)}
 					disabled={verifyLetterIsWrongGuess(alphabetLetter) ||
-						verifyLetterIsCorrectGuess(alphabetLetter)}>{alphabetLetter}</button
+						verifyLetterIsCorrectGuess(alphabetLetter) ||
+						!hasChosenWord ||
+						playerChoosesWordIsMe}>{alphabetLetter}</button
 				>
 			{/each}
 		</div>
@@ -179,8 +194,7 @@
 				info="Type a word for your opponent"
 				placeholder="Type a word"
 				variant="secondary"
-				value={word}
-				onChange={(value) => (word = value)}
+				bind:value={newWord}
 			/>
 
 			<button class="new-word-submit-button" on:click={handleSetWord}>Let's go</button>
@@ -304,7 +318,10 @@
 		border-radius: 0.5rem;
 		color: var(--color-neutral-primary);
 	}
-	.keyboard-container > button:not(.guess, .guess):hover {
+	.keyboard-container > button:disabled:not(.wrong-guess, .correct-guess) {
+		filter: brightness(0.85);
+	}
+	.keyboard-container > button:not(.wrong-guess, .correct-guess, :disabled):hover {
 		cursor: pointer;
 		filter: brightness(0.95);
 	}

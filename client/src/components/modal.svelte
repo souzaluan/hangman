@@ -7,8 +7,7 @@
 	$: if (dialog && !isOpen) dialog.close();
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
-<dialog bind:this={dialog} on:close={() => (isOpen = false)} on:click|self={() => dialog.close()}>
+<dialog bind:this={dialog} on:close={() => (isOpen = false)}>
 	<slot />
 </dialog>
 

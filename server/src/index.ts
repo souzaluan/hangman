@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { PlayerType } from './constants';
 import { Player, Room } from './entities';
 import { SuccessNotification } from './notifications';
-import { SetupResponse } from './responses';
+import { ProfileResponse, SetupResponse } from './responses';
 
 const app = express();
 
@@ -52,15 +52,17 @@ io.on('connection', (socket) => {
         correctGuesses: room.correctGuesses,
         letters: room.letters,
         wordLength: room.word.length,
+        playerChoosesWord: null,
       },
-      me: {
-        id: player.id,
-        name: player.name,
-        type: player.type,
-      },
+    };
+    const profile: ProfileResponse = {
+      id: player.id,
+      name: player.name,
+      type: player.type,
     };
 
     socket.emit('setup', setup);
+    socket.emit('profile', profile);
   });
 
   socket.on('join-room', (code, callback) => {
@@ -111,15 +113,17 @@ io.on('connection', (socket) => {
         correctGuesses: room.correctGuesses,
         letters: room.letters,
         wordLength: room.word.length,
+        playerChoosesWord: room.playerChoosesWord.id,
       },
-      me: {
-        id: player.id,
-        name: player.name,
-        type: player.type,
-      },
+    };
+    const profile: ProfileResponse = {
+      id: player.id,
+      name: player.name,
+      type: player.type,
     };
 
     io.in(room.id).emit('setup', setup);
+    socket.emit('profile', profile);
 
     callback();
   });
@@ -147,11 +151,7 @@ io.on('connection', (socket) => {
           correctGuesses: room.correctGuesses,
           letters: room.letters,
           wordLength: room.word.length,
-        },
-        me: {
-          id: player.id,
-          name: player.name,
-          type: player.type,
+          playerChoosesWord: room.playerChoosesWord?.id ?? null,
         },
       };
 
@@ -195,11 +195,7 @@ io.on('connection', (socket) => {
         correctGuesses: room.correctGuesses,
         letters: room.letters,
         wordLength: room.word.length,
-      },
-      me: {
-        id: player.id,
-        name: player.name,
-        type: player.type,
+        playerChoosesWord: room.playerChoosesWord?.id ?? null,
       },
     };
 

@@ -49,6 +49,10 @@ class Room extends Entity<Omit<RoomProps, 'id'>> {
     this.props.letters = positions;
   }
 
+  get playerChoosesWord(): Player | null {
+    return this.props.playerChoosesWord ?? null;
+  }
+
   set playerChoosesWord(player: Player) {
     this.props.playerChoosesWord = player;
   }
