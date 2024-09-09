@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { socket } from '$lib/socket';
 	import { NotificationType } from '$server/constants';
-	import type { NotificationResponse, SetupResponse } from '$server/responses';
+	import type { NotificationResponse, ProfileResponse, SetupResponse } from '$server/responses';
 
 	import { IconHeart, IconHeartFilled } from '@tabler/icons-svelte';
 	import { onMount } from 'svelte';
@@ -10,66 +10,77 @@
 	import Header from '$components/header.svelte';
 	import Input from '$components/input.svelte';
 
-	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) => String.fromCharCode(index + 65));
-
-	let setup: SetupResponse | null = null;
-	$: status = setup ? 'playing' : 'joining-or-creating';
-	$: maxAttempts = setup?.room.maxAttempts ?? 0;
-
-	let word = 'SECRET';
-	let newWordModalIsOpen = false;
+	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) =>
+		String.fromCharCode(index + 65).toUpperCase()
+	);
 
 	let roomCode = '';
 
-	let letters: string[] = [];
+	let newWord = '';
+	let newWordModalIsOpen = false;
 
-	let attempts: string[] = [];
-	$: wrongAttempts = attempts.filter((attempt) => !letters.includes(attempt)).length;
-	$: attemptsStatus = Array.from(
+	let profile: ProfileResponse | null = null;
+
+	let setup: SetupResponse | null = null;
+	$: letters = setup?.room.letters ?? [];
+	$: status = setup ? 'playing' : 'joining-or-creating';
+	$: maxAttempts = setup?.room.maxAttempts ?? 0;
+	$: remainingAttempts = setup?.room.remainingAttempts ?? 0;
+	$: wrongGuesses = setup?.room.wrongGuesses ?? [];
+	$: correctGuesses = setup?.room.correctGuesses ?? [];
+	$: playerChoosesWordIsMe = profile && setup && profile.id === setup.room.playerChoosesWord;
+	$: hasChosenWord = !!setup?.room.wordLength;
+
+	$: guessessStatus = Array.from(
 		{ length: maxAttempts },
-		(_, index): 'wrong-attempt' | 'initial-state' => {
-			return index >= maxAttempts - wrongAttempts ? 'wrong-attempt' : 'initial-state';
+		(_, index): 'wrong-guess' | 'initial-state' => {
+			return index >= maxAttempts - (maxAttempts - remainingAttempts)
+				? 'wrong-guess'
+				: 'initial-state';
 		}
 	);
 
-	$: verifyCurrentLetterWasTried = (letter: string): boolean => {
-		const currentLetterWasTried = attempts.includes(letter);
-		return currentLetterWasTried;
+	$: verifyLetterIsWrongGuess = (letter: string): boolean => {
+		const isWrongGuess = wrongGuesses.includes(letter);
+		return isWrongGuess;
 	};
 
-	$: verifyLetterIsWrongAttempt = (letter: string): boolean => {
-		const isWrongAttempt = attempts.includes(letter) && !letters.includes(letter);
-		return isWrongAttempt;
-	};
-
-	$: verifyLetterIsRightAttempt = (letter: string): boolean => {
-		const isRightAttempt = attempts.includes(letter) && letters.includes(letter);
-		return isRightAttempt;
+	$: verifyLetterIsCorrectGuess = (letter: string): boolean => {
+		const isCorrectGuess = correctGuesses.includes(letter);
+		return isCorrectGuess;
 	};
 
 	const handleCreateRoom = () => {
 		socket.emit('create-room', (_setup: SetupResponse) => {
-			console.log(_setup);
 			setup = _setup;
 		});
 	};
 	const handleJoinRoom = () => {
-		socket.emit('join-room', roomCode, (_setup: SetupResponse | null, error: string | null) => {
+		socket.emit('join-room', roomCode, (error: string | null) => {
 			if (error) {
 				return toast.error(error);
 			}
-
-			setup = _setup;
 		});
 	};
-
 	const handleSetWord = () => {
-		socket.emit('set-word', { roomCode: setup?.room.id, word }, (error?: Error) => {
+		if (!newWord.trim()) return toast.error('Digite uma palavra.');
+		if (newWord.includes(' ')) return toast.error('Não pode conter espaços.');
+		const hasNumberRegex = /\d/;
+		if (hasNumberRegex.test(newWord)) return toast.error('A palavra não pode conter números.');
+
+		socket.emit('set-word', { roomCode: setup?.room.id, word: newWord }, (error?: Error) => {
 			if (error) {
 				return toast.error(error.message);
 			}
 
 			newWordModalIsOpen = false;
+		});
+	};
+	const handleTakeGuess = (letter: string) => {
+		socket.emit('take-guess', letter, (error?: Error) => {
+			if (error) {
+				return toast.error(error.message);
+			}
 		});
 	};
 
@@ -94,10 +105,12 @@
 		socket.on('choose-word', () => {
 			newWordModalIsOpen = true;
 		});
-		socket.on('chosen-word', (wordLength) => {
-			letters = Array.from({ length: wordLength }, () => '_');
+		socket.on('setup', (_setup) => {
+			setup = _setup;
 		});
-
+		socket.on('profile', (_profile) => {
+			profile = _profile;
+		});
 		socket.on('notification', (notification: NotificationResponse) => {
 			const toastTypeByNotificationType: Record<NotificationType, 'success'> = {
 				[NotificationType.Success]: 'success'
@@ -119,9 +132,8 @@
 			<Input
 				info="Enter room code"
 				placeholder="Room code"
-				value={roomCode}
+				bind:value={roomCode}
 				onSubmit={handleJoinRoom}
-				onChange={(value) => (roomCode = value)}
 			/>
 
 			<span class="conditional-label">
@@ -143,9 +155,9 @@
 	/>
 
 	<section class="playing-section">
-		<div class="attempts-status">
-			{#each attemptsStatus as attemptStatus}
-				{#if attemptStatus === 'initial-state'}
+		<div class="guesses-status">
+			{#each guessessStatus as guessStatus}
+				{#if guessStatus === 'initial-state'}
 					<IconHeartFilled color="var(--color-danger-primary)" size="2rem" />
 				{:else}
 					<IconHeart color="var(--color-danger-primary)" size="2rem" />
@@ -155,22 +167,20 @@
 
 		<div class="letters-container">
 			{#each letters as letter}
-				{#if verifyCurrentLetterWasTried(letter)}
-					<p>{letter}</p>
-				{:else}
-					<p>_</p>
-				{/if}
+				<p>{letter}</p>
 			{/each}
 		</div>
 
 		<div class="keyboard-container">
 			{#each ALPHABET_LETTERS as alphabetLetter}
 				<button
-					on:click={() => (attempts = [...attempts, alphabetLetter])}
-					class:wrong-attempt={verifyLetterIsWrongAttempt(alphabetLetter)}
-					class:right-attempt={verifyLetterIsRightAttempt(alphabetLetter)}
-					disabled={verifyLetterIsWrongAttempt(alphabetLetter) ||
-						verifyLetterIsRightAttempt(alphabetLetter)}>{alphabetLetter}</button
+					on:click={() => handleTakeGuess(alphabetLetter)}
+					class:wrong-guess={verifyLetterIsWrongGuess(alphabetLetter)}
+					class:correct-guess={verifyLetterIsCorrectGuess(alphabetLetter)}
+					disabled={verifyLetterIsWrongGuess(alphabetLetter) ||
+						verifyLetterIsCorrectGuess(alphabetLetter) ||
+						!hasChosenWord ||
+						playerChoosesWordIsMe}>{alphabetLetter}</button
 				>
 			{/each}
 		</div>
@@ -184,8 +194,7 @@
 				info="Type a word for your opponent"
 				placeholder="Type a word"
 				variant="secondary"
-				value={word}
-				onChange={(value) => (word = value)}
+				bind:value={newWord}
 			/>
 
 			<button class="new-word-submit-button" on:click={handleSetWord}>Let's go</button>
@@ -270,7 +279,7 @@
 		background-color: var(--color-neutral-primary);
 	}
 
-	.attempts-status {
+	.guesses-status {
 		display: flex;
 		gap: 0.25rem;
 		background-color: var(--color-neutral-secondary);
@@ -309,16 +318,19 @@
 		border-radius: 0.5rem;
 		color: var(--color-neutral-primary);
 	}
-	.keyboard-container > button:not(.wrong-attempt, .right-attempt):hover {
+	.keyboard-container > button:disabled:not(.wrong-guess, .correct-guess) {
+		filter: brightness(0.85);
+	}
+	.keyboard-container > button:not(.wrong-guess, .correct-guess, :disabled):hover {
 		cursor: pointer;
 		filter: brightness(0.95);
 	}
 
-	.keyboard-container > button.wrong-attempt {
+	.keyboard-container > button.wrong-guess {
 		background-color: var(--color-danger-primary);
 		color: var(--color-neutral-secondary);
 	}
-	.keyboard-container > button.right-attempt {
+	.keyboard-container > button.correct-guess {
 		background-color: var(--color-brand-secondary);
 	}
 
