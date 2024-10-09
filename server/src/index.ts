@@ -19,8 +19,8 @@ const io = new Server(http, {
   },
 });
 
-const players: Player[] = [];
-const rooms: Room[] = [];
+let players: Player[] = [];
+let rooms: Room[] = [];
 
 io.on('connection', (socket) => {
   console.log('> new connection: ', socket.id);
@@ -96,9 +96,11 @@ io.on('connection', (socket) => {
 
     socket.join(room.id);
 
-    const playerChoosesWord = playersInRoom[0];
-    room.playerChoosesWord = playerChoosesWord;
-    socket.to(playerChoosesWord.id).emit('choose-word');
+    if (!room.word) {
+      const playerChoosesWord = playersInRoom[0];
+      room.playerChoosesWord = playerChoosesWord;
+      socket.to(playerChoosesWord.id).emit('choose-word');
+    }
 
     socket
       .in(room.id)
@@ -113,7 +115,7 @@ io.on('connection', (socket) => {
         correctGuesses: room.correctGuesses,
         letters: room.letters,
         wordLength: room.word.length,
-        playerChoosesWord: room.playerChoosesWord.id,
+        playerChoosesWord: room.playerChoosesWord?.id ?? null,
       },
     };
     const profile: ProfileResponse = {
@@ -124,6 +126,60 @@ io.on('connection', (socket) => {
 
     io.in(room.id).emit('setup', setup);
     socket.emit('profile', profile);
+
+    callback();
+  });
+
+  socket.on('leave-room', (callback) => {
+    console.log('> leave room');
+
+    const player = players.find((_player) => _player.id === socket.id);
+
+    const room = rooms.find((_room) => _room.id === player?.roomCode);
+
+    if (!room || !player) return callback('Ops, ocorreu um erro.');
+
+    const restPlayers = players.filter((_player) => _player.id !== socket.id);
+    players = restPlayers;
+
+    socket.emit('leave-room');
+
+    socket
+      .in(room.id)
+      .emit('notification', new SuccessNotification(`${player.name} left!`));
+
+    const playerStayedInRoom = players.find(
+      (_player) => _player.roomCode === room.id
+    );
+
+    if (!playerStayedInRoom) {
+      const restRooms = rooms.filter((_room) => _room.id !== room.id);
+      rooms = restRooms;
+      return;
+    }
+
+    const setup: SetupResponse = {
+      room: {
+        id: room.id,
+        maxAttempts: room.maxAttempts,
+        remainingAttempts: room.remainingAttempts ?? room.maxAttempts,
+        wrongGuesses: room.wrongGuesses,
+        correctGuesses: room.correctGuesses,
+        letters: room.letters,
+        wordLength: room.word.length,
+        playerChoosesWord: playerStayedInRoom.id,
+      },
+    };
+
+    const playerStayedInRoomProfile: ProfileResponse = {
+      id: playerStayedInRoom.id,
+      name: playerStayedInRoom.name,
+      type: PlayerType.Admin,
+    };
+
+    socket.in(room.id).emit('setup', setup);
+    socket.to(playerStayedInRoom.id).emit('profile', playerStayedInRoomProfile);
+    io.to(player.id).socketsLeave(room.id);
 
     callback();
   });
@@ -151,7 +207,7 @@ io.on('connection', (socket) => {
           correctGuesses: room.correctGuesses,
           letters: room.letters,
           wordLength: room.word.length,
-          playerChoosesWord: room.playerChoosesWord?.id ?? null,
+          playerChoosesWord: socket.id,
         },
       };
 
@@ -186,6 +242,11 @@ io.on('connection', (socket) => {
       }
     });
 
+    const isLoser = room.wrongGuesses.length === room.maxAttempts;
+    const isWinner =
+      room.letters.filter((_letter) => _letter !== '_').length ===
+      room.word.length;
+
     const setup: SetupResponse = {
       room: {
         id: room.id,
@@ -196,6 +257,52 @@ io.on('connection', (socket) => {
         letters: room.letters,
         wordLength: room.word.length,
         playerChoosesWord: room.playerChoosesWord?.id ?? null,
+      },
+    };
+
+    io.in(room.id).emit('setup', setup);
+
+    if (isLoser) {
+      socket.emit('is-loser');
+      socket.in(room.id).emit('is-winner');
+    }
+
+    if (isWinner) {
+      socket.emit('is-winner');
+      socket.in(room.id).emit('is-loser');
+    }
+
+    callback();
+  });
+
+  socket.on('play-again', (callback) => {
+    const player = players.find((_player) => _player.id === socket.id);
+
+    const room = rooms.find((_room) => _room.id === player?.roomCode);
+
+    const nextChoosesWordPlayer = players.find(
+      (_player) =>
+        _player.roomCode === room?.id &&
+        _player.id !== room?.playerChoosesWord?.id
+    );
+
+    if (!room || !player || !nextChoosesWordPlayer)
+      return callback('Ops, ocorreu um erro.');
+
+    io.to(nextChoosesWordPlayer.id).emit('choose-word');
+
+    room.reset({ playerChoosesWord: nextChoosesWordPlayer });
+
+    const setup: SetupResponse = {
+      room: {
+        id: room.id,
+        maxAttempts: room.maxAttempts,
+        remainingAttempts: room.remainingAttempts ?? room.maxAttempts,
+        wrongGuesses: room.wrongGuesses,
+        correctGuesses: room.correctGuesses,
+        letters: room.letters,
+        wordLength: room.word.length,
+        playerChoosesWord: nextChoosesWordPlayer.id,
       },
     };
 
