@@ -1,34 +1,24 @@
 <script lang="ts">
-	import { IconArrowLeft, IconCopy } from "@tabler/icons-svelte";
+	import { IconArrowLeft, IconCopy } from '@tabler/icons-svelte';
 
-	export let onLeftRoom: () => void;
+	export let onLeaveRoom: () => void;
 	export let onCopyRoomCode: () => void;
-	export let roomCode: string
+	export let roomCode: string;
 </script>
 
 <header class="container">
-	<button
-		type="button"
-		class="back"
-		title="Left room"
-		on:click={onLeftRoom}
-	>
+	<button type="button" class="back" title="Leave room" on:click={onLeaveRoom}>
 		<IconArrowLeft size="2rem" />
 	</button>
 
-	<button
-		type="button"
-		class="copy-room-code"
-		title="Copy room code"
-		on:click={onCopyRoomCode}
-	>
+	<button type="button" class="copy-room-code" title="Copy room code" on:click={onCopyRoomCode}>
 		<IconCopy />
 		{roomCode}
 	</button>
 </header>
 
 <style>
-    .container {
+	.container {
 		width: 100%;
 		height: 6rem;
 		padding-left: 2rem;

@@ -116,14 +116,22 @@
 			});
 	};
 
-	const handleLeftRoom = () => {
-		setup = null;
+	const handleLeaveRoom = () => {
+		socket.emit('leave-room', (error?: string) => {
+			if (error) {
+				toast.error(error);
+			}
+		});
 	};
 
 	onMount(() => {
 		socket.on('choose-word', () => {
 			newWord = '';
 			newWordModalIsOpen = true;
+		});
+		socket.on('leave-room', () => {
+			profile = null;
+			setup = null;
 		});
 		socket.on('setup', (_setup) => {
 			isWinnerModalIsOpen = false;
@@ -180,7 +188,7 @@
 	<Header
 		roomCode={setup?.room.id ?? ''}
 		onCopyRoomCode={handleCopyRoomCode}
-		onLeftRoom={handleLeftRoom}
+		onLeaveRoom={handleLeaveRoom}
 	/>
 
 	<section class="playing-section">
@@ -232,7 +240,7 @@
 			<h2 class="new-word-title">GAME OVER</h2>
 
 			<div class="result-content-buttons">
-				<button class="leave-room-button">Leave</button>
+				<button class="leave-room-button" on:click={handleLeaveRoom}>Leave</button>
 				<button class="play-again-button" on:click={handlePlayAgain}>Play again</button>
 			</div>
 		</div>
@@ -243,7 +251,7 @@
 			<h2 class="new-word-title">YOU WIN</h2>
 
 			<div class="result-content-buttons">
-				<button class="leave-room-button">Leave</button>
+				<button class="leave-room-button" on:click={handleLeaveRoom}>Leave</button>
 				<button class="play-again-button" on:click={handlePlayAgain}>Play again</button>
 			</div>
 		</div>
