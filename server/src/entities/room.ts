@@ -8,8 +8,8 @@ interface RoomProps {
   correctGuesses?: string[];
   wrongGuesses?: string[];
   letters?: string[];
-  playerChoosesWord?: Player;
-  word?: string;
+  playerChoosesWord?: Player | null;
+  word?: string | null;
 }
 
 class Room extends Entity<Omit<RoomProps, 'id'>> {
@@ -29,8 +29,16 @@ class Room extends Entity<Omit<RoomProps, 'id'>> {
     return this.props.maxAttempts;
   }
 
+  set maxAttempts(value) {
+    this.props.maxAttempts = value;
+  }
+
   get remainingAttempts() {
     return this.props.remainingAttempts;
+  }
+
+  set remainingAttempts(value) {
+    this.props.remainingAttempts = value;
   }
 
   get correctGuesses() {
@@ -76,6 +84,19 @@ class Room extends Entity<Omit<RoomProps, 'id'>> {
       (this.props.remainingAttempts ?? this.props.maxAttempts) - 1,
       0
     );
+  }
+
+  reset(props?: Partial<Omit<RoomProps, 'id'>>) {
+    this.props = {
+      maxAttempts: 5,
+      remainingAttempts: 5,
+      word: null,
+      correctGuesses: [],
+      wrongGuesses: [],
+      letters: [],
+      playerChoosesWord: null,
+      ...props,
+    };
   }
 
   static create({ id, ...props }: RoomProps) {

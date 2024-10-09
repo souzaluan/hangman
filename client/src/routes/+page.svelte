@@ -28,8 +28,11 @@
 	$: remainingAttempts = setup?.room.remainingAttempts ?? 0;
 	$: wrongGuesses = setup?.room.wrongGuesses ?? [];
 	$: correctGuesses = setup?.room.correctGuesses ?? [];
-	$: playerChoosesWordIsMe = profile && setup && profile.id === setup.room.playerChoosesWord;
+	$: playerChoosesWordIsMe = profile?.id === setup?.room.playerChoosesWord;
 	$: hasChosenWord = !!setup?.room.wordLength;
+
+	let isWinnerModalIsOpen = false;
+	let isLoserModalIsOpen = false;
 
 	$: guessessStatus = Array.from(
 		{ length: maxAttempts },
@@ -50,13 +53,22 @@
 		return isCorrectGuess;
 	};
 
+	$: verifyLetterIsDisabled = (alphabetLetter: string): boolean => {
+		return Boolean(
+			verifyLetterIsWrongGuess(alphabetLetter) ||
+				verifyLetterIsCorrectGuess(alphabetLetter) ||
+				!hasChosenWord ||
+				playerChoosesWordIsMe
+		);
+	};
+
 	const handleCreateRoom = () => {
 		socket.emit('create-room', (_setup: SetupResponse) => {
 			setup = _setup;
 		});
 	};
 	const handleJoinRoom = () => {
-		socket.emit('join-room', roomCode, (error: string | null) => {
+		socket.emit('join-room', roomCode, (error?: string) => {
 			if (error) {
 				return toast.error(error);
 			}
@@ -68,18 +80,25 @@
 		const hasNumberRegex = /\d/;
 		if (hasNumberRegex.test(newWord)) return toast.error('A palavra não pode conter números.');
 
-		socket.emit('set-word', { roomCode: setup?.room.id, word: newWord }, (error?: Error) => {
+		socket.emit('set-word', { roomCode: setup?.room.id, word: newWord }, (error?: string) => {
 			if (error) {
-				return toast.error(error.message);
+				return toast.error(error);
 			}
 
 			newWordModalIsOpen = false;
 		});
 	};
 	const handleTakeGuess = (letter: string) => {
-		socket.emit('take-guess', letter, (error?: Error) => {
+		socket.emit('take-guess', letter, (error?: string) => {
 			if (error) {
-				return toast.error(error.message);
+				return toast.error(error);
+			}
+		});
+	};
+	const handlePlayAgain = () => {
+		socket.emit('play-again', (error?: string) => {
+			if (error) {
+				return toast.error(error);
 			}
 		});
 	};
@@ -103,13 +122,23 @@
 
 	onMount(() => {
 		socket.on('choose-word', () => {
+			newWord = '';
 			newWordModalIsOpen = true;
 		});
 		socket.on('setup', (_setup) => {
+			isWinnerModalIsOpen = false;
+			isLoserModalIsOpen = false;
+
 			setup = _setup;
 		});
 		socket.on('profile', (_profile) => {
 			profile = _profile;
+		});
+		socket.on('is-loser', () => {
+			isLoserModalIsOpen = true;
+		});
+		socket.on('is-winner', () => {
+			isWinnerModalIsOpen = true;
 		});
 		socket.on('notification', (notification: NotificationResponse) => {
 			const toastTypeByNotificationType: Record<NotificationType, 'success'> = {
@@ -177,10 +206,7 @@
 					on:click={() => handleTakeGuess(alphabetLetter)}
 					class:wrong-guess={verifyLetterIsWrongGuess(alphabetLetter)}
 					class:correct-guess={verifyLetterIsCorrectGuess(alphabetLetter)}
-					disabled={verifyLetterIsWrongGuess(alphabetLetter) ||
-						verifyLetterIsCorrectGuess(alphabetLetter) ||
-						!hasChosenWord ||
-						playerChoosesWordIsMe}>{alphabetLetter}</button
+					disabled={verifyLetterIsDisabled(alphabetLetter)}>{alphabetLetter}</button
 				>
 			{/each}
 		</div>
@@ -198,6 +224,28 @@
 			/>
 
 			<button class="new-word-submit-button" on:click={handleSetWord}>Let's go</button>
+		</div>
+	</Modal>
+
+	<Modal isOpen={isLoserModalIsOpen}>
+		<div class="result-content">
+			<h2 class="new-word-title">GAME OVER</h2>
+
+			<div class="result-content-buttons">
+				<button class="leave-room-button">Leave</button>
+				<button class="play-again-button" on:click={handlePlayAgain}>Play again</button>
+			</div>
+		</div>
+	</Modal>
+
+	<Modal isOpen={isWinnerModalIsOpen}>
+		<div class="result-content">
+			<h2 class="new-word-title">YOU WIN</h2>
+
+			<div class="result-content-buttons">
+				<button class="leave-room-button">Leave</button>
+				<button class="play-again-button" on:click={handlePlayAgain}>Play again</button>
+			</div>
 		</div>
 	</Modal>
 {/if}
@@ -363,6 +411,54 @@
 		color: var(--color-neutral-secondary);
 	}
 	.new-word-submit-button:hover {
+		cursor: pointer;
+		filter: brightness(0.9);
+	}
+
+	.result-content {
+		width: 26rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2.5rem;
+
+		@media screen and (max-width: 540px) {
+			width: 20rem;
+		}
+	}
+	.result-content-buttons {
+		width: 100%;
+		display: flex;
+		gap: 1rem;
+	}
+
+	.leave-room-button {
+		min-height: 4rem;
+		max-height: 4rem;
+		flex: 1;
+		font-size: 1.5rem;
+		font-weight: 600;
+		border: none;
+		border-radius: 0.5rem;
+		background-color: var(--color-danger-primary);
+		color: var(--color-neutral-secondary);
+	}
+	.leave-room-button:hover {
+		cursor: pointer;
+		filter: brightness(0.9);
+	}
+	.play-again-button {
+		min-height: 4rem;
+		max-height: 4rem;
+		flex: 1;
+		font-size: 1.5rem;
+		font-weight: 600;
+		border: none;
+		border-radius: 0.5rem;
+		background-color: var(--color-neutral-primary);
+		color: var(--color-neutral-secondary);
+	}
+	.play-again-button:hover {
 		cursor: pointer;
 		filter: brightness(0.9);
 	}

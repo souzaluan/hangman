@@ -151,7 +151,7 @@ io.on('connection', (socket) => {
           correctGuesses: room.correctGuesses,
           letters: room.letters,
           wordLength: room.word.length,
-          playerChoosesWord: room.playerChoosesWord?.id ?? null,
+          playerChoosesWord: socket.id,
         },
       };
 
@@ -186,6 +186,11 @@ io.on('connection', (socket) => {
       }
     });
 
+    const isLoser = room.wrongGuesses.length === room.maxAttempts;
+    const isWinner =
+      room.letters.filter((_letter) => _letter !== '_').length ===
+      room.word.length;
+
     const setup: SetupResponse = {
       room: {
         id: room.id,
@@ -196,6 +201,52 @@ io.on('connection', (socket) => {
         letters: room.letters,
         wordLength: room.word.length,
         playerChoosesWord: room.playerChoosesWord?.id ?? null,
+      },
+    };
+
+    io.in(room.id).emit('setup', setup);
+
+    if (isLoser) {
+      socket.emit('is-loser');
+      socket.in(room.id).emit('is-winner');
+    }
+
+    if (isWinner) {
+      socket.emit('is-winner');
+      socket.in(room.id).emit('is-loser');
+    }
+
+    callback();
+  });
+
+  socket.on('play-again', (callback) => {
+    const player = players.find((_player) => _player.id === socket.id);
+
+    const room = rooms.find((_room) => _room.id === player?.roomCode);
+
+    const nextChoosesWordPlayer = players.find(
+      (_player) =>
+        _player.roomCode === room?.id &&
+        _player.id !== room?.playerChoosesWord?.id
+    );
+
+    if (!room || !player || !nextChoosesWordPlayer)
+      return callback('Ops, ocorreu um erro.');
+
+    io.to(nextChoosesWordPlayer.id).emit('choose-word');
+
+    room.reset({ playerChoosesWord: nextChoosesWordPlayer });
+
+    const setup: SetupResponse = {
+      room: {
+        id: room.id,
+        maxAttempts: room.maxAttempts,
+        remainingAttempts: room.remainingAttempts ?? room.maxAttempts,
+        wrongGuesses: room.wrongGuesses,
+        correctGuesses: room.correctGuesses,
+        letters: room.letters,
+        wordLength: room.word.length,
+        playerChoosesWord: nextChoosesWordPlayer.id,
       },
     };
 
