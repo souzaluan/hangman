@@ -29,7 +29,26 @@ io.on('connection', (socket) => {
   socket.on('create-room', () => {
     console.log('> create room');
 
-    const roomCode = crypto.randomUUID();
+    const generateCode = () => {
+      const letters = String.fromCharCode(
+        65 + Math.floor(Math.random() * 26),
+        65 + Math.floor(Math.random() * 26)
+      );
+
+      const digits = Math.floor(Math.random() * 100)
+        .toString()
+        .padStart(2, '0');
+
+      const code = letters + digits;
+
+      const roomWithSameCode = rooms.find((_room) => _room.id === code);
+
+      if (roomWithSameCode) return generateCode();
+
+      return code;
+    };
+
+    const roomCode = generateCode();
 
     const room = Room.create({ id: roomCode, maxAttempts: 5 });
     rooms.push(room);
