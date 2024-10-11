@@ -1,0 +1,5 @@
+cd app
+
+npx lint-staged
+
+exit 1

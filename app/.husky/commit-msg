@@ -1,0 +1,5 @@
+cd app
+
+npm run commitlint
+
+exit 1
