@@ -1,4 +1,3 @@
-import { Word } from '../value-objects';
 import { Entity } from './default';
 import Player from './player';
 
