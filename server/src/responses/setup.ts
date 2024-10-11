@@ -8,6 +8,7 @@ interface SetupResponse {
     letters: string[];
     wordLength: number;
     playerChoosesWord: string | null;
+    isPlaying: boolean;
   };
 }
 

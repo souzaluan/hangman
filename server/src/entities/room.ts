@@ -1,3 +1,4 @@
+import { Word } from '../value-objects';
 import { Entity } from './default';
 import Player from './player';
 
@@ -13,16 +14,12 @@ interface RoomProps {
 }
 
 class Room extends Entity<Omit<RoomProps, 'id'>> {
-  get word() {
-    return this.props.word ?? '';
+  get word(): string | null {
+    return this.props.word ?? null;
   }
 
   set word(word: string) {
-    this.props.word = word
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^\w\s]/gi, '')
-      .toUpperCase();
+    this.props.word = word;
   }
 
   get maxAttempts() {
@@ -90,11 +87,11 @@ class Room extends Entity<Omit<RoomProps, 'id'>> {
     this.props = {
       maxAttempts: 5,
       remainingAttempts: 5,
-      word: null,
       correctGuesses: [],
       wrongGuesses: [],
       letters: [],
       playerChoosesWord: null,
+      word: null,
       ...props,
     };
   }

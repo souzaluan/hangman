@@ -58,7 +58,8 @@
 			verifyLetterIsWrongGuess(alphabetLetter) ||
 				verifyLetterIsCorrectGuess(alphabetLetter) ||
 				!hasChosenWord ||
-				playerChoosesWordIsMe
+				playerChoosesWordIsMe ||
+				(setup && !setup.room.isPlaying)
 		);
 	};
 
