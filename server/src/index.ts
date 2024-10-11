@@ -7,6 +7,7 @@ import { PlayerType } from './constants';
 import { Player, Room } from './entities';
 import { SuccessNotification } from './notifications';
 import { ProfileResponse, SetupResponse } from './responses';
+import { Word } from './value-objects';
 
 const app = express();
 
@@ -51,8 +52,9 @@ io.on('connection', (socket) => {
         wrongGuesses: room.wrongGuesses,
         correctGuesses: room.correctGuesses,
         letters: room.letters,
-        wordLength: room.word.length,
+        wordLength: room.word?.length ?? 0,
         playerChoosesWord: null,
+        isPlaying: false,
       },
     };
     const profile: ProfileResponse = {
@@ -96,8 +98,15 @@ io.on('connection', (socket) => {
 
     socket.join(room.id);
 
-    if (!room.word) {
-      const playerChoosesWord = playersInRoom[0];
+    const isLoser = room.wrongGuesses.length === room.maxAttempts;
+    const isWinner =
+      room.letters.filter((_letter) => _letter !== '_').length ===
+        room.word?.length ?? 0;
+
+    const isFinished = isLoser || isWinner;
+
+    if (!room.word || (room.word && isFinished)) {
+      const playerChoosesWord = room.playerChoosesWord ?? playersInRoom[0];
       room.playerChoosesWord = playerChoosesWord;
       socket.to(playerChoosesWord.id).emit('choose-word');
     }
@@ -114,8 +123,9 @@ io.on('connection', (socket) => {
         wrongGuesses: room.wrongGuesses,
         correctGuesses: room.correctGuesses,
         letters: room.letters,
-        wordLength: room.word.length,
+        wordLength: room.word?.length ?? 0,
         playerChoosesWord: room.playerChoosesWord?.id ?? null,
+        isPlaying: !isFinished,
       },
     };
     const profile: ProfileResponse = {
@@ -166,8 +176,9 @@ io.on('connection', (socket) => {
         wrongGuesses: room.wrongGuesses,
         correctGuesses: room.correctGuesses,
         letters: room.letters,
-        wordLength: room.word.length,
+        wordLength: room.word?.length ?? 0,
         playerChoosesWord: playerStayedInRoom.id,
+        isPlaying: true,
       },
     };
 
@@ -195,19 +206,25 @@ io.on('connection', (socket) => {
 
       if (!room || !player) return callback('Ops, ocorreu um erro.');
 
-      room.word = word;
-      room.letters = Array.from({ length: room.word.length }, () => '_');
+      const newRoomWord = new Word(word);
+
+      room.reset({
+        letters: Array.from({ length: newRoomWord.value.length }, () => '_'),
+        playerChoosesWord: player,
+        word: newRoomWord.value,
+      });
 
       const setup: SetupResponse = {
         room: {
           id: room.id,
           maxAttempts: room.maxAttempts,
-          remainingAttempts: room.remainingAttempts ?? room.maxAttempts,
+          remainingAttempts: room.maxAttempts,
           wrongGuesses: room.wrongGuesses,
           correctGuesses: room.correctGuesses,
           letters: room.letters,
-          wordLength: room.word.length,
-          playerChoosesWord: socket.id,
+          wordLength: newRoomWord.value.length,
+          playerChoosesWord: room.playerChoosesWord?.id ?? null,
+          isPlaying: true,
         },
       };
 
@@ -227,7 +244,7 @@ io.on('connection', (socket) => {
     if (!room || !player) return callback('Ops, ocorreu um erro.');
 
     const normalizedLetter = letter.trim().toUpperCase();
-    const isCorrectGuess = room.word.includes(normalizedLetter);
+    const isCorrectGuess = room.word?.includes(normalizedLetter);
 
     if (isCorrectGuess) {
       room.addCorrectGuess(normalizedLetter);
@@ -236,7 +253,7 @@ io.on('connection', (socket) => {
       room.addWrongGuess(normalizedLetter);
     }
 
-    room.word.split('').forEach((_letter, index) => {
+    room.word?.split('').forEach((_letter, index) => {
       if (_letter === normalizedLetter) {
         room.letters[index] = _letter;
       }
@@ -245,7 +262,7 @@ io.on('connection', (socket) => {
     const isLoser = room.wrongGuesses.length === room.maxAttempts;
     const isWinner =
       room.letters.filter((_letter) => _letter !== '_').length ===
-      room.word.length;
+      room.word?.length;
 
     const setup: SetupResponse = {
       room: {
@@ -255,8 +272,9 @@ io.on('connection', (socket) => {
         wrongGuesses: room.wrongGuesses,
         correctGuesses: room.correctGuesses,
         letters: room.letters,
-        wordLength: room.word.length,
+        wordLength: room.word?.length ?? 0,
         playerChoosesWord: room.playerChoosesWord?.id ?? null,
+        isPlaying: true,
       },
     };
 
@@ -276,6 +294,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('play-again', (callback) => {
+    console.log('> play-again');
+
     const player = players.find((_player) => _player.id === socket.id);
 
     const room = rooms.find((_room) => _room.id === player?.roomCode);
@@ -301,8 +321,9 @@ io.on('connection', (socket) => {
         wrongGuesses: room.wrongGuesses,
         correctGuesses: room.correctGuesses,
         letters: room.letters,
-        wordLength: room.word.length,
+        wordLength: room.word?.length ?? 0,
         playerChoosesWord: nextChoosesWordPlayer.id,
+        isPlaying: true,
       },
     };
 
