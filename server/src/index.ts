@@ -89,10 +89,13 @@ io.on('connection', (socket) => {
   socket.on('join-room', (code, callback) => {
     console.log('> join room');
 
-    const room = rooms.find((_room) => _room.id === code);
+    const room = rooms.find(
+      (_room) => _room.id.toLocaleLowerCase() === code.toLocaleLowerCase()
+    );
 
     const playersInRoom = players.filter(
-      (_player) => _player.roomCode === code
+      (_player) =>
+        _player.roomCode.toLocaleLowerCase() === code.toLocaleLowerCase()
     );
 
     const amountPlayersInRoom = playersInRoom.length;
@@ -120,7 +123,7 @@ io.on('connection', (socket) => {
     const isLoser = room.wrongGuesses.length === room.maxAttempts;
     const isWinner =
       room.letters.filter((_letter) => _letter !== '_').length ===
-        (room.word?.length ?? 0);
+      (room.word?.length ?? 0);
 
     const isFinished = isLoser || isWinner;
 
@@ -263,7 +266,9 @@ io.on('connection', (socket) => {
     if (!room || !player) return callback('Ops, ocorreu um erro.');
 
     const normalizedLetter = letter.trim().toUpperCase();
-    const isCorrectGuess = room.word?.includes(normalizedLetter);
+    const isCorrectGuess = room.word
+      ?.normalize('NFD')
+      .includes(normalizedLetter);
 
     if (isCorrectGuess) {
       room.addCorrectGuess(normalizedLetter);
@@ -272,11 +277,15 @@ io.on('connection', (socket) => {
       room.addWrongGuess(normalizedLetter);
     }
 
-    room.word?.split('').forEach((_letter, index) => {
-      if (_letter === normalizedLetter) {
-        room.letters[index] = _letter;
-      }
-    });
+    room.word
+      ?.normalize('NFD')
+      .replace(/[^\w\s]/gi, '')
+      .split('')
+      .forEach((_letter, index) => {
+        if (_letter === normalizedLetter && room.word) {
+          room.letters[index] = room.word[index];
+        }
+      });
 
     const isLoser = room.wrongGuesses.length === room.maxAttempts;
     const isWinner =
@@ -352,6 +361,6 @@ io.on('connection', (socket) => {
   });
 });
 
-app.get("/health", (req, res) => res.status(200).send("OK"));
+app.get('/health', (req, res) => res.status(200).send('OK'));
 
 http.listen(3333, '0.0.0.0', () => console.log('> server is running'));
