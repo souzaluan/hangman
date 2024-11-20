@@ -75,10 +75,10 @@
 		});
 	};
 	const handleSetWord = () => {
-		if (!newWord.trim()) return toast.error('Digite uma palavra.');
-		if (newWord.includes(' ')) return toast.error('Não pode conter espaços.');
+		if (!newWord.trim()) return toast.error('Type a word.');
+		if (newWord.includes(' ')) return toast.error("The word can't contain spaces.");
 		const hasNumberRegex = /\d/;
-		if (hasNumberRegex.test(newWord)) return toast.error('A palavra não pode conter números.');
+		if (hasNumberRegex.test(newWord)) return toast.error("The word can't contain a number.");
 
 		socket.emit('set-word', { roomCode: setup?.room.id, word: newWord }, (error?: string) => {
 			if (error) {
@@ -109,10 +109,10 @@
 		window.navigator.clipboard
 			.writeText(setup.room.id)
 			.then(() => {
-				toast.success('O código da sala foi copiado!');
+				toast.success('Room code has been copied!');
 			})
 			.catch(() => {
-				toast.error('Ops! Ocorreu um erro ao copiar o código. Tente novamente');
+				toast.error('Oops! There was an error copying the code. Please try again.');
 			});
 	};
 
