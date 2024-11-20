@@ -1,6 +1,26 @@
 version: "3.8"
 services:
-  web:
+  hangman-server:
+    container_name: hangman-server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - 3333:3333
+    volumes:
+      - ./server/src:/usr/src/app/server/src
+      - ./server/tsconfig.json:/usr/src/app/server/tsconfig.json
+    command: npm run dev:server
+    networks:
+      - hangman
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3333/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  hangman-web-client:
     container_name: hangman-web-client
     build:
       context: ./web
@@ -17,25 +37,12 @@ services:
     command: npm run dev -- --host
     environment:
       - PORT=5173
-      - PUBLIC_SOCKET_API_URL=http://server:3333
+      - PUBLIC_SOCKET_API_URL=http://localhost:3333
     networks:
       - hangman
     depends_on:
-      - server
-
-  server:
-    container_name: hangman-server
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    ports:
-      - 3333:3333
-    volumes:
-      - ./server/src:/usr/src/app/server/src
-      - ./server/tsconfig.json:/usr/src/app/server/tsconfig.json
-    command: npm run dev:server
-    networks:
-      - hangman
+      hangman-server:
+        condition: service_healthy
 
 networks:
   hangman:
