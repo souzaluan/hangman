@@ -1,0 +1,42 @@
+version: "3.8"
+services:
+  web:
+    container_name: hangman-web-client
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - 5173:5173
+    volumes:
+      - ./web/src:/usr/src/app/web/src
+      - ./web/static:/usr/src/app/web/static
+      - ./web/vite.config.ts:/usr/src/app/web/vite.config.ts
+      - ./web/tsconfig.json:/usr/src/app/web/tsconfig.json
+      - ./web/svelte.config.js:/usr/src/app/web/svelte.config.js
+      - ./web/.svelte-kit:/usr/src/app/web/.svelte-kit
+    command: npm run dev -- --host
+    environment:
+      - PORT=5173
+      - PUBLIC_SOCKET_API_URL=http://server:3333
+    networks:
+      - hangman
+    depends_on:
+      - server
+
+  server:
+    container_name: hangman-server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - 3333:3333
+    volumes:
+      - ./server/src:/usr/src/app/server/src
+      - ./server/tsconfig.json:/usr/src/app/server/tsconfig.json
+    command: npm run dev:server
+    networks:
+      - hangman
+
+networks:
+  hangman:
+    driver: bridge

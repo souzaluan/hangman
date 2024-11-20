@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { socket } from '$lib/socket';
-	import { NotificationType } from '$server/constants';
-	import type { NotificationResponse, ProfileResponse, SetupResponse } from '$server/responses';
+	import { NotificationType, type NotificationResponse, type ProfileResponse, type SetupResponse } from '$lib/types';
 
 	import { IconHeart, IconHeartFilled } from '@tabler/icons-svelte';
 	import { onMount } from 'svelte';
