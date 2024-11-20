@@ -1,4 +1,5 @@
 FROM node:21-alpine
+RUN apk add --no-cache curl
 RUN mkdir -p /usr/src/app/server
 WORKDIR /usr/src/app/server
 COPY package*.json .

@@ -2,7 +2,7 @@ import express from 'express';
 
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import crypto from 'node:crypto';
+import { faker } from '@faker-js/faker';
 import { PlayerType } from './constants';
 import { Player, Room } from './entities';
 import { SuccessNotification } from './notifications';
@@ -55,7 +55,7 @@ io.on('connection', (socket) => {
 
     const player = Player.create({
       id: socket.id,
-      name: 'Player 1',
+      name: faker.person.firstName(),
       type: PlayerType.Admin,
       roomCode,
     });
@@ -109,7 +109,7 @@ io.on('connection', (socket) => {
 
     const player = Player.create({
       id: socket.id,
-      name: `Player ${amountPlayersInRoom + 1}`,
+      name: faker.person.firstName(),
       type: PlayerType.Guest,
       roomCode: room.id,
     });
@@ -120,7 +120,7 @@ io.on('connection', (socket) => {
     const isLoser = room.wrongGuesses.length === room.maxAttempts;
     const isWinner =
       room.letters.filter((_letter) => _letter !== '_').length ===
-        room.word?.length ?? 0;
+        (room.word?.length ?? 0);
 
     const isFinished = isLoser || isWinner;
 
@@ -352,4 +352,6 @@ io.on('connection', (socket) => {
   });
 });
 
-http.listen(3333, () => console.log('> server is running'));
+app.get("/health", (req, res) => res.status(200).send("OK"));
+
+http.listen(3333, '0.0.0.0', () => console.log('> server is running'));
