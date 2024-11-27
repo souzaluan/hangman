@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { socket } from '$lib/socket';
-	import { NotificationType, type NotificationResponse, type ProfileResponse, type SetupResponse } from '$lib/types';
+	import {
+		NotificationType,
+		type NotificationResponse,
+		type ProfileResponse,
+		type SetupResponse
+	} from '$lib/types';
 
 	import { IconHeart, IconHeartFilled } from '@tabler/icons-svelte';
 	import { onMount } from 'svelte';
@@ -8,6 +13,9 @@
 	import Modal from '$components/modal.svelte';
 	import Header from '$components/header.svelte';
 	import Input from '$components/input.svelte';
+	import Loading from '$components/loading-heart.svelte';
+
+	let connectionStatus: 'error' | 'pending' | 'success' = 'pending';
 
 	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) =>
 		String.fromCharCode(index + 65).toUpperCase()
@@ -22,7 +30,8 @@
 
 	let setup: SetupResponse | null = null;
 	$: letters = setup?.room.letters ?? [];
-	$: status = setup ? 'playing' : 'joining-or-creating';
+	$: gameStatus =
+		connectionStatus === 'success' ? (setup ? 'playing' : 'joining-or-creating') : null;
 	$: maxAttempts = setup?.room.maxAttempts ?? 0;
 	$: remainingAttempts = setup?.room.remainingAttempts ?? 0;
 	$: wrongGuesses = setup?.room.wrongGuesses ?? [];
@@ -125,6 +134,9 @@
 	};
 
 	onMount(() => {
+		socket.on('connect', () => (connectionStatus = 'success'));
+		socket.on('connect_error', () => (connectionStatus = 'error'));
+
 		socket.on('choose-word', () => {
 			newWord = '';
 			newWordModalIsOpen = true;
@@ -158,7 +170,20 @@
 	});
 </script>
 
-{#if status === 'joining-or-creating'}
+{#if connectionStatus === 'pending'}
+	<section class="loading-connection-section">
+		<Loading />
+		<p class="connection-status">Loading...</p>
+	</section>
+{/if}
+
+{#if connectionStatus === 'error'}
+	<section class="error-connection-section">
+		<p class="connection-status">Oops! Error during connection.</p>
+	</section>
+{/if}
+
+{#if gameStatus === 'joining-or-creating'}
 	<section class="join-or-create-section">
 		<div class="highlight">
 			<h1>Multiplayer Hangman</h1>
@@ -184,7 +209,7 @@
 	</section>
 {/if}
 
-{#if status === 'playing'}
+{#if gameStatus === 'playing'}
 	<Header
 		roomCode={setup?.room.id ?? ''}
 		onCopyRoomCode={handleCopyRoomCode}
@@ -259,14 +284,24 @@
 {/if}
 
 <style>
+	.loading-connection-section,
+	.error-connection-section,
 	.join-or-create-section {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 		align-items: center;
-		gap: 2rem;
 		padding: 2rem;
+	}
+
+	.loading-connection-section,
+	.error-connection-section {
+		gap: 0.5rem;
+	}
+
+	.join-or-create-section {
+		gap: 2rem;
 	}
 
 	.playing-section {
@@ -277,6 +312,12 @@
 		align-items: center;
 		gap: 6rem;
 		padding: 2rem;
+	}
+
+	p.connection-status {
+		font-size: 2rem;
+		font-weight: 600;
+		color: var(--color-neutral-primary);
 	}
 
 	h1 {
