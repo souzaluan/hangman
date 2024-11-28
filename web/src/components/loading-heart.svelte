@@ -17,6 +17,7 @@
 		transform: rotate(45deg);
 		transform-origin: 5rem 5rem;
 		color: var(--color-danger-primary);
+		filter: drop-shadow(0 0 0.125rem var(--color-neutral-primary));
 	}
 	.heart div {
 		top: 3.5rem;
