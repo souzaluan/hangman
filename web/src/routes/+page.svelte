@@ -7,15 +7,21 @@
 		type SetupResponse
 	} from '$lib/types';
 
+	import { title } from '$stores/create-title';
+
 	import { IconHeart, IconHeartFilled } from '@tabler/icons-svelte';
-	import { onMount } from 'svelte';
+	import { afterUpdate, onMount } from 'svelte';
 	import toast from 'svelte-french-toast';
 	import Modal from '$components/modal.svelte';
 	import Header from '$components/header.svelte';
 	import Input from '$components/input.svelte';
 	import Loading from '$components/loading-heart.svelte';
 
-	let connectionStatus: 'error' | 'pending' | 'success' = 'pending';
+	let connectionStatus = {
+		error: false,
+		pending: true,
+		success: false
+	};
 
 	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) =>
 		String.fromCharCode(index + 65).toUpperCase()
@@ -30,8 +36,10 @@
 
 	let setup: SetupResponse | null = null;
 	$: letters = setup?.room.letters ?? [];
-	$: gameStatus =
-		connectionStatus === 'success' ? (setup ? 'playing' : 'joining-or-creating') : null;
+	$: gameStatus = {
+		lobby: !setup && connectionStatus.success,
+		playing: !!setup
+	};
 	$: maxAttempts = setup?.room.maxAttempts ?? 0;
 	$: remainingAttempts = setup?.room.remainingAttempts ?? 0;
 	$: wrongGuesses = setup?.room.wrongGuesses ?? [];
@@ -41,6 +49,7 @@
 
 	let isWinnerModalIsOpen = false;
 	let isLoserModalIsOpen = false;
+	let correctWord = '';
 
 	$: guessessStatus = Array.from(
 		{ length: maxAttempts },
@@ -134,8 +143,14 @@
 	};
 
 	onMount(() => {
-		socket.on('connect', () => (connectionStatus = 'success'));
-		socket.on('connect_error', () => (connectionStatus = 'error'));
+		socket.on(
+			'connect',
+			() => (connectionStatus = { pending: false, error: false, success: true })
+		);
+		socket.on(
+			'connect_error',
+			() => (connectionStatus = { pending: false, error: true, success: false })
+		);
 
 		socket.on('choose-word', () => {
 			newWord = '';
@@ -154,7 +169,8 @@
 		socket.on('profile', (_profile) => {
 			profile = _profile;
 		});
-		socket.on('is-loser', () => {
+		socket.on('is-loser', ({ word }: { word: string }) => {
+			correctWord = word;
 			isLoserModalIsOpen = true;
 		});
 		socket.on('is-winner', () => {
@@ -168,23 +184,34 @@
 			toast[toastType](notification.message);
 		});
 	});
+
+	afterUpdate(() => {
+		const conditionsHandlers = [
+			{ condition: connectionStatus.pending, handler: () => title.set('Loading') },
+			{ condition: connectionStatus.error, handler: () => title.set('Error') },
+			{ condition: gameStatus.lobby, handler: () => title.set('Lobby') },
+			{ condition: gameStatus.playing, handler: () => title.set('Playing') }
+		];
+		const conditionHandler = conditionsHandlers.find((item) => !!item.condition);
+		if (conditionHandler) conditionHandler.handler();
+	});
 </script>
 
-{#if connectionStatus === 'pending'}
+{#if connectionStatus.pending}
 	<section class="loading-connection-section">
 		<Loading />
 		<p class="connection-status">Loading...</p>
 	</section>
 {/if}
 
-{#if connectionStatus === 'error'}
+{#if connectionStatus.error}
 	<section class="error-connection-section">
 		<p class="connection-status">Oops! Error during connection.</p>
 	</section>
 {/if}
 
-{#if gameStatus === 'joining-or-creating'}
-	<section class="join-or-create-section">
+{#if gameStatus.lobby}
+	<section class="lobby-section">
 		<div class="highlight">
 			<h1>Multiplayer Hangman</h1>
 			<h2>🤓 guess or die 💀</h2>
@@ -209,7 +236,7 @@
 	</section>
 {/if}
 
-{#if gameStatus === 'playing'}
+{#if gameStatus.playing}
 	<Header
 		roomCode={setup?.room.id ?? ''}
 		onCopyRoomCode={handleCopyRoomCode}
@@ -262,7 +289,12 @@
 
 	<Modal isOpen={isLoserModalIsOpen}>
 		<div class="result-content">
-			<h2 class="new-word-title">GAME OVER</h2>
+			<header class="result-header">
+				<h2 class="result-title">GAME OVER</h2>
+				{#if correctWord && !playerChoosesWordIsMe}
+					<p class="result-correct-word">The correct word was <strong>{correctWord}</strong></p>
+				{/if}
+			</header>
 
 			<div class="result-content-buttons">
 				<button class="leave-room-button" on:click={handleLeaveRoom}>Leave</button>
@@ -273,7 +305,7 @@
 
 	<Modal isOpen={isWinnerModalIsOpen}>
 		<div class="result-content">
-			<h2 class="new-word-title">YOU WIN</h2>
+			<h2 class="result-title">YOU WIN</h2>
 
 			<div class="result-content-buttons">
 				<button class="leave-room-button" on:click={handleLeaveRoom}>Leave</button>
@@ -286,7 +318,7 @@
 <style>
 	.loading-connection-section,
 	.error-connection-section,
-	.join-or-create-section {
+	.lobby-section {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
@@ -300,7 +332,7 @@
 		gap: 0.5rem;
 	}
 
-	.join-or-create-section {
+	.lobby-section {
 		gap: 2rem;
 	}
 
@@ -474,6 +506,21 @@
 		@media screen and (max-width: 540px) {
 			width: 20rem;
 		}
+	}
+	.result-title {
+		font-size: 1.75rem;
+		font-weight: 600;
+		color: var(--color-neutral-primary);
+	}
+	.result-header {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+	}
+	.result-correct-word {
+		font-size: 1.25rem;
+		color: var(--color-neutral-primary);
 	}
 	.result-content-buttons {
 		width: 100%;
