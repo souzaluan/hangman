@@ -14,7 +14,8 @@ const config = {
 		adapter: adapter(),
 		alias: {
 			$server: '../server/src',
-			$components: './src/components'
+			$components: './src/components',
+			$stores: './src/stores'
 		}
 	}
 };

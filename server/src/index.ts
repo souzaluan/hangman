@@ -309,13 +309,13 @@ io.on('connection', (socket) => {
     io.in(room.id).emit('setup', setup);
 
     if (isLoser) {
-      socket.emit('is-loser');
+      socket.emit('is-loser', { word: room.word });
       socket.in(room.id).emit('is-winner');
     }
 
     if (isWinner) {
       socket.emit('is-winner');
-      socket.in(room.id).emit('is-loser');
+      socket.in(room.id).emit('is-loser', { word: room.word });
     }
 
     callback();

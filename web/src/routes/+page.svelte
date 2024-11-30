@@ -7,6 +7,8 @@
 		type SetupResponse
 	} from '$lib/types';
 
+	import { title } from '$stores/create-title';
+
 	import { IconHeart, IconHeartFilled } from '@tabler/icons-svelte';
 	import { onMount } from 'svelte';
 	import toast from 'svelte-french-toast';
@@ -41,6 +43,7 @@
 
 	let isWinnerModalIsOpen = false;
 	let isLoserModalIsOpen = false;
+	let correctWord = '';
 
 	$: guessessStatus = Array.from(
 		{ length: maxAttempts },
@@ -154,7 +157,8 @@
 		socket.on('profile', (_profile) => {
 			profile = _profile;
 		});
-		socket.on('is-loser', () => {
+		socket.on('is-loser', ({ word }: { word: string }) => {
+			correctWord = word;
 			isLoserModalIsOpen = true;
 		});
 		socket.on('is-winner', () => {
@@ -262,7 +266,12 @@
 
 	<Modal isOpen={isLoserModalIsOpen}>
 		<div class="result-content">
-			<h2 class="new-word-title">GAME OVER</h2>
+			<header class="result-header">
+				<h2 class="result-title">GAME OVER</h2>
+				{#if correctWord && !playerChoosesWordIsMe}
+					<p class="result-correct-word">The correct word was <strong>{correctWord}</strong></p>
+				{/if}
+			</header>
 
 			<div class="result-content-buttons">
 				<button class="leave-room-button" on:click={handleLeaveRoom}>Leave</button>
@@ -273,7 +282,7 @@
 
 	<Modal isOpen={isWinnerModalIsOpen}>
 		<div class="result-content">
-			<h2 class="new-word-title">YOU WIN</h2>
+			<h2 class="result-title">YOU WIN</h2>
 
 			<div class="result-content-buttons">
 				<button class="leave-room-button" on:click={handleLeaveRoom}>Leave</button>
@@ -474,6 +483,21 @@
 		@media screen and (max-width: 540px) {
 			width: 20rem;
 		}
+	}
+	.result-title {
+		font-size: 1.75rem;
+		font-weight: 600;
+		color: var(--color-neutral-primary);
+	}
+	.result-header {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+	}
+	.result-correct-word {
+		font-size: 1.25rem;
+		color: var(--color-neutral-primary);
 	}
 	.result-content-buttons {
 		width: 100%;

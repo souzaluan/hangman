@@ -1,7 +1,14 @@
 <script>
-	import { Toaster } from 'svelte-french-toast';
 	import '../app.css';
+
+	import { title } from '../stores/create-title';
+
+	import { Toaster } from 'svelte-french-toast';
 </script>
+
+<svelte:head>
+	<title>{$title}</title>
+</svelte:head>
 
 <main>
 	<slot />
