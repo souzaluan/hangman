@@ -10,14 +10,18 @@
 	import { title } from '$stores/create-title';
 
 	import { IconHeart, IconHeartFilled } from '@tabler/icons-svelte';
-	import { onMount } from 'svelte';
+	import { afterUpdate, onMount } from 'svelte';
 	import toast from 'svelte-french-toast';
 	import Modal from '$components/modal.svelte';
 	import Header from '$components/header.svelte';
 	import Input from '$components/input.svelte';
 	import Loading from '$components/loading-heart.svelte';
 
-	let connectionStatus: 'error' | 'pending' | 'success' = 'pending';
+	let connectionStatus = {
+		error: false,
+		pending: true,
+		success: false
+	};
 
 	const ALPHABET_LETTERS = Array.from(Array(26)).map((_, index) =>
 		String.fromCharCode(index + 65).toUpperCase()
@@ -32,8 +36,10 @@
 
 	let setup: SetupResponse | null = null;
 	$: letters = setup?.room.letters ?? [];
-	$: gameStatus =
-		connectionStatus === 'success' ? (setup ? 'playing' : 'joining-or-creating') : null;
+	$: gameStatus = {
+		lobby: !setup && connectionStatus.success,
+		playing: !!setup
+	};
 	$: maxAttempts = setup?.room.maxAttempts ?? 0;
 	$: remainingAttempts = setup?.room.remainingAttempts ?? 0;
 	$: wrongGuesses = setup?.room.wrongGuesses ?? [];
@@ -137,8 +143,14 @@
 	};
 
 	onMount(() => {
-		socket.on('connect', () => (connectionStatus = 'success'));
-		socket.on('connect_error', () => (connectionStatus = 'error'));
+		socket.on(
+			'connect',
+			() => (connectionStatus = { pending: false, error: false, success: true })
+		);
+		socket.on(
+			'connect_error',
+			() => (connectionStatus = { pending: false, error: true, success: false })
+		);
 
 		socket.on('choose-word', () => {
 			newWord = '';
@@ -172,23 +184,34 @@
 			toast[toastType](notification.message);
 		});
 	});
+
+	afterUpdate(() => {
+		const conditionsHandlers = [
+			{ condition: connectionStatus.pending, handler: () => title.set('Loading') },
+			{ condition: connectionStatus.error, handler: () => title.set('Error') },
+			{ condition: gameStatus.lobby, handler: () => title.set('Lobby') },
+			{ condition: gameStatus.playing, handler: () => title.set('Playing') }
+		];
+		const conditionHandler = conditionsHandlers.find((item) => !!item.condition);
+		if (conditionHandler) conditionHandler.handler();
+	});
 </script>
 
-{#if connectionStatus === 'pending'}
+{#if connectionStatus.pending}
 	<section class="loading-connection-section">
 		<Loading />
 		<p class="connection-status">Loading...</p>
 	</section>
 {/if}
 
-{#if connectionStatus === 'error'}
+{#if connectionStatus.error}
 	<section class="error-connection-section">
 		<p class="connection-status">Oops! Error during connection.</p>
 	</section>
 {/if}
 
-{#if gameStatus === 'joining-or-creating'}
-	<section class="join-or-create-section">
+{#if gameStatus.lobby}
+	<section class="lobby-section">
 		<div class="highlight">
 			<h1>Multiplayer Hangman</h1>
 			<h2>🤓 guess or die 💀</h2>
@@ -213,7 +236,7 @@
 	</section>
 {/if}
 
-{#if gameStatus === 'playing'}
+{#if gameStatus.playing}
 	<Header
 		roomCode={setup?.room.id ?? ''}
 		onCopyRoomCode={handleCopyRoomCode}
@@ -295,7 +318,7 @@
 <style>
 	.loading-connection-section,
 	.error-connection-section,
-	.join-or-create-section {
+	.lobby-section {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
@@ -309,7 +332,7 @@
 		gap: 0.5rem;
 	}
 
-	.join-or-create-section {
+	.lobby-section {
 		gap: 2rem;
 	}
 
