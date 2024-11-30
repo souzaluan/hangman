@@ -8,12 +8,11 @@
 
 <svelte:head>
 	<title>{$title}</title>
-	<meta name="description" content="Hangman Game - Guess or Die" />
+	<meta name="description" content="Multiplayer Hangman Game" />
 
 	<meta property="og:url" content="https://hangman-alpha-gules.vercel.app/" />
-	<meta property="og:site_name" content="Multiplayer Hangman Game" />
-	<meta property="og:description" content="Hangman Game - Guess or Die" />
-	<meta property="og:title" content={$title} />
+	<meta property="og:description" content="Multiplayer Hangman Game" />
+	<meta property="og:title" content="Hangman • Let's play" />
 	<meta property="og:type" content="website" />
 	<meta
 		property="og:image"
@@ -23,8 +22,8 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta property="twitter:domain" content="hangman-alpha-gules.vercel.app" />
 	<meta property="twitter:url" content="https://hangman-alpha-gules.vercel.app/" />
-	<meta name="twitter:title" content={$title} />
-	<meta name="twitter:description" content="Hangman Game - Guess or Die" />
+	<meta property="twitter:title" content="Hangman • Let's play" />
+	<meta name="twitter:description" content="Multiplayer Hangman Game" />
 	<meta
 		name="twitter:image"
 		content="https://i.postimg.cc/ZRGZktKd/skull-with-red-hearts-it-blue-background-with-heart-middle-327903-2317348.jpg"
